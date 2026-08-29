@@ -1,0 +1,8 @@
+# Local configuration and Android build artifacts
+supabase.properties
+keystore.properties
+*.jks
+.gradle/
+**/build/
+local.properties
+google-sheets.env

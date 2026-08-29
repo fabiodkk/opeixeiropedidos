@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>O Peixeiro · Pedidos</title>
+    <link rel="stylesheet" href="./style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./config.js"></script>
+  </head>
+  <body>
+    <div id="loginScreen" class="screen active">
+      <div class="panel">
+        <h1>O Peixeiro<br>Pedidos</h1>
+        <label>Nome</label>
+        <input id="loginUser" placeholder="Ex: Maria / Claudio / Laura" />
+        <label>Senha</label>
+        <input id="loginPassword" type="password" placeholder="Crie uma senha" />
+        <label>Perfil</label>
+        <select id="loginProfile">
+          <option>Maria</option>
+          <option>Claudio</option>
+          <option>Laura</option>
+          <option>Antonio</option>
+          <option>Gabriel</option>
+          <option>Rafaela</option>
+          <option>Naldo</option>
+          <option>Edmar</option>
+        </select>
+        <button id="loginBtn">Entrar</button>
+        <p id="loginStatus" class="status"></p>
+      </div>
+    </div>
+
+    <div id="appScreen" class="screen">
+      <header class="topbar">
+        <div>
+          <span class="tiny">Perfil</span>
+          <h2 id="profileName">Perfil</h2>
+        </div>
+        <button class="ghost" id="logoutBtn">Sair</button>
+      </header>
+
+      <section class="summary">
+        <div class="chip">P1 / P2 / P3 / P4 / P5 / P6</div>
+        <div class="chip">Pedido até 06:00</div>
+        <div class="chip" id="todayLabel">Hoje</div>
+      </section>
+
+      <section class="card">
+        <h3>Solicitar pedido</h3>
+        <div id="productList"></div>
+        <button id="addProductBtn">Adicionar produto</button>
+        <button id="saveOrderBtn" class="primary">Salvar pedido</button>
+      </section>
+
+      <section class="card">
+        <h3>Pedidos recentes</h3>
+        <div id="recentOrders"></div>
+      </section>
+    </div>
+
+    <script>
+      const appConfig = window.OPEIXEIRO_CONFIG;
+      const supabase = window.supabase.createClient(appConfig.supabaseUrl, appConfig.supabaseAnonKey);
+      const state = { user: null, profile: null, orderRows: [{ name: 'Heineken 600ml', qty: 1 }] };
+
+      const els = {
+        loginScreen: document.getElementById('loginScreen'),
+        appScreen: document.getElementById('appScreen'),
+        loginUser: document.getElementById('loginUser'),
+        loginPassword: document.getElementById('loginPassword'),
+        loginProfile: document.getElementById('loginProfile'),
+        loginBtn: document.getElementById('loginBtn'),
+        loginStatus: document.getElementById('loginStatus'),
+        profileName: document.getElementById('profileName'),
+        logoutBtn: document.getElementById('logoutBtn'),
+        productList: document.getElementById('productList'),
+        recentOrders: document.getElementById('recentOrders'),
+        saveOrderBtn: document.getElementById('saveOrderBtn'),
+        addProductBtn: document.getElementById('addProductBtn'),
+        todayLabel: document.getElementById('todayLabel')
+      };
+
+      function todayText() {
+        const d = new Date();
+        return d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' });
+      }
+
+      function renderProducts() {
+        els.productList.innerHTML = '';
+        state.orderRows.forEach((row, index) => {
+          const wrapper = document.createElement('div');
+          wrapper.className = 'productRow';
+
+          const name = document.createElement('input');
+          name.value = row.name;
+          name.placeholder = 'Produto';
+          name.setAttribute('list','catalogList');
+          name.addEventListener('input', (e) => { state.orderRows[index].name = e.target.value; });
+
+          const qty = document.createElement('input');
+          qty.type = 'number';
+          qty.min = '0';
+          qty.value = row.qty;
+          qty.addEventListener('input', (e) => { state.orderRows[index].qty = Number(e.target.value || 0); });
+
+          const remove = document.createElement('button');
+          remove.className = 'mini';
+          remove.textContent = 'Remover';
+          remove.addEventListener('click', () => {
+            state.orderRows.splice(index, 1);
+            if (!state.orderRows.length) state.orderRows = [{ name: 'Novo produto', qty: 1 }];
+            renderProducts();
+          });
+
+          wrapper.appendChild(name);
+          wrapper.appendChild(qty);
+          wrapper.appendChild(remove);
+          els.productList.appendChild(wrapper);
+        });
+      }
+
+      function loadRecentOrders() {
+        const current = JSON.parse(localStorage.getItem('opeixeiro_orders_v1') || '[]');
+        els.recentOrders.innerHTML = current.slice(0, 5).map(item => {
+          const productsText = (item.items || []).map(p => `${p.name} x ${p.qty}`).join(', ');
+          return `<div class="orderItem"><strong>${item.profile}</strong><span>${new Date(item.created_at).toLocaleString('pt-BR')}</span><p>${productsText}</p></div>`;
+        }).join('') || '<p>Nenhum pedido registrado ainda.</p>';
+      }
+
+      function saveSession() {
+        localStorage.setItem('opeixeiro_session_v1', JSON.stringify({ user: state.user, profile: state.profile }));
+      }
+
+      function loadSession() {
+        const raw = localStorage.getItem('opeixeiro_session_v1');
+        if (!raw) return;
+        try {
+          const session = JSON.parse(raw);
+          if (session.user && session.profile) {
+            state.user = session.user;
+            state.profile = session.profile;
+            updateLoggedState();
+          }
+        } catch (e) {}
+      }
+
+      function updateLoggedState() {
+        if (!state.user || !state.profile) {
+          els.loginScreen.classList.add('active');
+          els.appScreen.classList.remove('active');
+          return;
+        }
+        els.profileName.textContent = `${state.profile} · ${state.user}`;
+        els.todayLabel.textContent = todayText();
+        els.loginScreen.classList.remove('active');
+        els.appScreen.classList.add('active');
+        loadRecentOrders();
+      }
+
+      async function persistToSupabase(orderPayload) {
+        try {
+          const { error } = await supabase.from('opeixeiro_orders').insert(orderPayload);
+          if (error) throw error;
+          return true;
+        } catch (e) {
+          console.warn('Supabase off', e.message || e);
+          return false;
+        }
+      }
+
+      async function handleLogin() {
+        const user = els.loginUser.value.trim();
+        const password = els.loginPassword.value.trim();
+        const profile = els.loginProfile.value.trim();
+        if (!user || !password) {
+          els.loginStatus.textContent = 'Preencha usuário e senha.';
+          return;
+        }
+        state.user = user;
+        state.profile = profile;
+        saveSession();
+        els.loginStatus.textContent = 'Acesso liberado.';
+        updateLoggedState();
+      }
+
+      async function handleSaveOrder() {
+        const validItems = state.orderRows.filter(row => row.name && row.qty > 0);
+        if (!validItems.length) {
+          alert('Nenhum produto informado.');
+          return;
+        }
+
+        const payload = {
+          user: state.user,
+          profile: state.profile,
+          created_at: new Date().toISOString(),
+          products: validItems,
+          total_items: validItems.reduce((sum, row) => sum + Number(row.qty), 0),
+          status: 'pendente'
+        };
+
+        const saved = JSON.parse(localStorage.getItem('opeixeiro_orders_v1') || '[]');
+        saved.unshift(payload);
+        localStorage.setItem('opeixeiro_orders_v1', JSON.stringify(saved.slice(0, 20)));
+        await persistToSupabase(payload);
+        loadRecentOrders();
+        alert('Pedido salvo com sucesso.');
+      }
+
+      els.loginBtn.addEventListener('click', handleLogin);
+      els.saveOrderBtn.addEventListener('click', handleSaveOrder);
+      els.addProductBtn.addEventListener('click', () => {
+        state.orderRows.push({ name: 'Novo produto', qty: 1 });
+        renderProducts();
+      });
+      els.logoutBtn.addEventListener('click', () => {
+        state.user = null;
+        state.profile = null;
+        localStorage.removeItem('opeixeiro_session_v1');
+        updateLoggedState();
+      });
+
+      document.getElementById('productList').innerHTML += '<datalist id="catalogList"></datalist>';
+      const catalogList = document.getElementById('catalogList');
+      catalogList.innerHTML = appConfig.catalog.map(item => `<option value="${item}"></option>`).join('');
+      renderProducts();
+      loadSession();
+      updateLoggedState();
+    </script>
+  </body>
+</html>

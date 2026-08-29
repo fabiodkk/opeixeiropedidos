@@ -1,0 +1,71 @@
+:root {
+  --bg: #07131B;
+  --panel: #12242d;
+  --panel-strong: #1A2A33;
+  --accent: #238F84;
+  --accent-2: #1C8B7C;
+  --text: #f1f7f7;
+  --muted: #bfd2d6;
+  --warn: #b8731c;
+  --danger: #c74d4d;
+  --border: #21414d;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Arial, sans-serif;
+}
+.screen { display: none; padding: 24px; }
+.screen.active { display: block; }
+.panel, .card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  max-width: 760px;
+  margin: 24px auto;
+}
+input, select, textarea, button {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  padding: 12px 14px;
+  margin-top: 8px;
+  margin-bottom: 12px;
+  font-size: 15px;
+}
+input, select, textarea {
+  background: #0d1d27;
+  color: var(--text);
+}
+button {
+  background: var(--panel-strong);
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 700;
+}
+button.primary { background: var(--accent); }
+button.ghost { background: transparent; border-color: var(--border); }
+button.mini { width: auto; padding: 8px 12px; }
+button.warn { background: var(--warn); }
+.topbar { display: flex; justify-content: space-between; align-items: center; max-width: 760px; margin: 0 auto; }
+.summary { display: flex; flex-wrap: wrap; gap: 8px; max-width: 760px; margin: 0 auto 12px; }
+.chip {
+  background: #16343d; border: 1px solid var(--border); border-radius: 999px; padding: 8px 12px; font-size: 12px;
+}
+.tiny { font-size: 11px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+.productRow { display: grid; grid-template-columns: 1fr 110px auto; gap: 10px; align-items: center; }
+.status { color: var(--muted); }
+.orderItem, .routeItem {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 10px;
+  background: #102128;
+}
+.routeActions { display: flex; gap: 8px; margin-top: 10px; }
+#qrImage { border-radius: 12px; background: white; padding: 10px; }
+@media (max-width: 640px) { .productRow { grid-template-columns: 1fr; } }

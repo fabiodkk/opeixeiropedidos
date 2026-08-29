@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>O Peixeiro Apps</title>
+    <style>
+      body { font-family: Arial, sans-serif; background: #07131B; color: #f3f7f7; margin: 0; padding: 32px; }
+      .wrap { max-width: 980px; margin: 0 auto; }
+      .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px,1fr)); gap: 20px; }
+      .card { background: #12242d; border: 1px solid #21414d; border-radius: 16px; padding: 24px; }
+      .btn { display: inline-block; padding: 12px 18px; border-radius: 10px; background: #238F84; color: white; text-decoration: none; font-weight: bold; }
+      .btn.secondary { background: #1A2A33; }
+      h1 { margin-bottom: 8px; }
+      p { color: #bfd2d6; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>O Peixeiro · Operação</h1>
+      <p>Selecione o app do dia para continuar.</p>
+      <div class="cards">
+        <div class="card">
+          <h2>Pedidos</h2>
+          <p>Solicitação, revisão e geração de pedido por perfil.</p>
+          <a class="btn" href="./pedidos.html">Abrir app de pedidos</a>
+        </div>
+        <div class="card">
+          <h2>Motorista</h2>
+          <p>Coletas, entregas, faltantes e QR de auditoria.</p>
+          <a class="btn secondary" href="./motorista.html">Abrir app do motorista</a>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

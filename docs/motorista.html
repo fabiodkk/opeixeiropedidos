@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>O Peixeiro · Motorista</title>
+    <link rel="stylesheet" href="./style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./config.js"></script>
+  </head>
+  <body>
+    <div id="loginScreen" class="screen active">
+      <div class="panel">
+        <h1>O Peixeiro<br>Motorista</h1>
+        <label>Motorista</label>
+        <input id="driverName" placeholder="Ex: Edmar / Mineiro" />
+        <label>Senha</label>
+        <input id="driverPassword" type="password" placeholder="Senha" />
+        <button id="driverLoginBtn">Entrar</button>
+        <p id="driverStatus" class="status"></p>
+      </div>
+    </div>
+
+    <div id="appScreen" class="screen">
+      <header class="topbar">
+        <div>
+          <span class="tiny">Motorista</span>
+          <h2 id="driverTitle">Motorista</h2>
+        </div>
+        <button class="ghost" id="driverLogoutBtn">Sair</button>
+      </header>
+
+      <section class="summary">
+        <div class="chip">Coletas do dia</div>
+        <div class="chip">Entrega por restaurante</div>
+      </section>
+
+      <section class="card">
+        <h3>Rota atual</h3>
+        <div id="routeList"></div>
+      </section>
+
+      <section class="card">
+        <h3>Gerar QR</h3>
+        <input id="qrText" value="OPEIXEIRO|confirmacao|p2|motorista|status=ok" />
+        <button id="qrBtn" class="primary">Gerar QR de confirmação</button>
+        <img id="qrImage" alt="QR" style="display:none; width: 220px; margin-top: 16px;" />
+      </section>
+
+      <section class="card">
+        <h3>Auditoria</h3>
+        <textarea id="auditText" placeholder="Descreva falha, avaria ou quantidade menor...">Sem ocorrência</textarea>
+        <button id="saveAuditBtn">Salvar auditoria</button>
+      </section>
+    </div>
+
+    <script>
+      const appConfig = window.OPEIXEIRO_CONFIG;
+      const supabase = window.supabase.createClient(appConfig.supabaseUrl, appConfig.supabaseAnonKey);
+      const routes = [
+        { name: 'P2 · Maria', items: 'Heineken 600ml x 12, Tilapia x 8, Mandioca x 3' },
+        { name: 'P3 · Mineiro', items: 'Carne moída x 4, Leite x 5, Mussarela x 2' },
+        { name: 'P5 · Cozinha', items: 'Picanha x 2, Açúcar x 6, Alface x 2' }
+      ];
+
+      const els = {
+        loginScreen: document.getElementById('loginScreen'),
+        appScreen: document.getElementById('appScreen'),
+        driverName: document.getElementById('driverName'),
+        driverPassword: document.getElementById('driverPassword'),
+        driverLoginBtn: document.getElementById('driverLoginBtn'),
+        driverStatus: document.getElementById('driverStatus'),
+        driverTitle: document.getElementById('driverTitle'),
+        driverLogoutBtn: document.getElementById('driverLogoutBtn'),
+        routeList: document.getElementById('routeList'),
+        qrText: document.getElementById('qrText'),
+        qrBtn: document.getElementById('qrBtn'),
+        qrImage: document.getElementById('qrImage'),
+        auditText: document.getElementById('auditText'),
+        saveAuditBtn: document.getElementById('saveAuditBtn')
+      };
+
+      function renderRoutes() {
+        els.routeList.innerHTML = routes.map(route => `
+          <div class="routeItem">
+            <div>
+              <strong>${route.name}</strong><br>
+              <small>${route.items}</small>
+            </div>
+            <div class="routeActions">
+              <button data-action="confirm" data-name="${route.name}">Confirmar</button>
+              <button data-action="shortfall" data-name="${route.name}" class="warn">Falta</button>
+            </div>
+          </div>
+        `).join('');
+
+        document.querySelectorAll('[data-action]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const action = btn.getAttribute('data-action');
+            const name = btn.getAttribute('data-name');
+            const message = action === 'confirm' ? `Coleta confirmada para ${name}` : `Falta registrada para ${name}`;
+            alert(message);
+            const payload = { driver: els.driverTitle.textContent, route: name, action, note: els.auditText.value || message, created_at: new Date().toISOString() };
+            saveAudit(payload);
+          });
+        });
+      }
+
+      async function saveAudit(payload) {
+        try {
+          const { error } = await supabase.from('opeixeiro_audits').insert(payload);
+          if (error) throw error;
+        } catch (e) {
+          console.warn('Supabase audit off', e.message || e);
+        }
+      }
+
+      function updateDriverUI() {
+        const driver = localStorage.getItem('opeixeiro_driver_v1');
+        if (!driver) {
+          els.loginScreen.classList.add('active');
+          els.appScreen.classList.remove('active');
+          return;
+        }
+        els.driverTitle.textContent = driver;
+        els.loginScreen.classList.remove('active');
+        els.appScreen.classList.add('active');
+        renderRoutes();
+      }
+
+      document.getElementById('driverLoginBtn').addEventListener('click', () => {
+        const name = els.driverName.value.trim();
+        const password = els.driverPassword.value.trim();
+        if (!name || !password) {
+          els.driverStatus.textContent = 'Preencha nome e senha.';
+          return;
+        }
+        localStorage.setItem('opeixeiro_driver_v1', name);
+        els.driverStatus.textContent = 'Motorista logado.';
+        updateDriverUI();
+      });
+
+      document.getElementById('driverLogoutBtn').addEventListener('click', () => {
+        localStorage.removeItem('opeixeiro_driver_v1');
+        updateDriverUI();
+      });
+
+      document.getElementById('qrBtn').addEventListener('click', () => {
+        const text = document.getElementById('qrText').value.trim() || 'OPEIXEIRO';
+        const url = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encodeURIComponent(text);
+        const img = document.getElementById('qrImage');
+        img.src = url;
+        img.style.display = 'block';
+      });
+
+      document.getElementById('saveAuditBtn').addEventListener('click', () => {
+        const payload = { driver: els.driverTitle.textContent, note: els.auditText.value || 'Sem observação', created_at: new Date().toISOString() };
+        saveAudit(payload);
+        alert('Auditoria salva.');
+      });
+
+      updateDriverUI();
+    </script>
+  </body>
+</html>

@@ -89,8 +89,8 @@ async function sendGreenMessage(message: string) {
       body: JSON.stringify({
         chatId: logisticsGroupId,
         urlFile: ordersPanelFileUrl,
-        fileName: "index.html",
-        caption: "📄 *Toque para Criar Pedidos*\nArquivo index.html atualizado do painel de pedidos.",
+        fileName: "Criar-Pedidos.html",
+        caption: "👇 *Toque em ABRIR para criar pedidos.*",
       }),
     });
     if (!response.ok) throw new Error(`Green-API file delivery returned ${response.status}`);

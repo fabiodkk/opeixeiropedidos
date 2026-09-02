@@ -875,10 +875,8 @@
         try {
           const { data, error } = await supabaseClient.from('opeixeiro_internal_purchase_relations').insert(payload).select('id').single();
           if (error || !data?.id) throw error || new Error('Compra não registrada.');
-          const summary = JSON.stringify({ store, source, authorized_by: payload.authorized_by, items });
-          if (!window.AndroidScanner?.captureInternalPurchaseReceipt) throw new Error('Abra esta tela pelo APK do motorista para usar a câmera.');
           ui.purchaseStatus.textContent = 'Agora fotografe a NOTA FISCAL. Não fotografe comprovante da maquininha.';
-          window.AndroidScanner.captureInternalPurchaseReceipt(data.id, orderId, state.driver, summary);
+          window.location.href = 'opeixeiro://internal-receipt?purchase_id=' + encodeURIComponent(data.id) + '&order_id=' + encodeURIComponent(orderId) + '&driver=' + encodeURIComponent(state.driver || '');
         } catch (error) {
           ui.purchaseStatus.textContent = 'Não foi possível abrir a câmera: ' + (error?.message || 'tente novamente.');
           button.disabled = false; button.textContent = 'Tirar foto da nota fiscal';
@@ -886,10 +884,9 @@
       }
       function saveInternalPurchase() {
         const saveButton = document.getElementById('saveInternalPurchaseBtn');
-        if (!window.AndroidScanner?.saveInternalPurchaseReceipt) { ui.purchaseStatus.textContent = 'Abra pelo APK atualizado para salvar a foto da nota fiscal.'; return; }
         saveButton.disabled = true; saveButton.textContent = 'Salvando compra...';
         ui.purchaseStatus.textContent = 'Salvando a compra, o estoque adicional e enviando o comprovante ao grupo...';
-        window.AndroidScanner.saveInternalPurchaseReceipt();
+        window.location.href = 'opeixeiro://save-internal-receipt';
       }
       window.onInternalPurchasePhotoCaptured = (ok, message) => {
         const takeButton = document.getElementById('confirmInternalPurchaseBtn'), saveButton = document.getElementById('saveInternalPurchaseBtn');

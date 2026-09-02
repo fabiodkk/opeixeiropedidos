@@ -251,6 +251,23 @@ public class MainActivity extends AppCompatActivity {
                     startNativeScannerFromWeb("delivery".equals(mode) ? "delivery" : "pickup");
                     return true;
                 }
+                if ("opeixeiro".equals(uri.getScheme()) && "internal-receipt".equals(uri.getHost())) {
+                    internalPurchaseId = uri.getQueryParameter("purchase_id");
+                    internalPurchaseOrderId = uri.getQueryParameter("order_id");
+                    internalPurchaseDriver = uri.getQueryParameter("driver");
+                    internalPurchaseSummary = "";
+                    internalPurchaseImageBase64 = null;
+                    launchInternalPurchaseCamera();
+                    return true;
+                }
+                if ("opeixeiro".equals(uri.getScheme()) && "save-internal-receipt".equals(uri.getHost())) {
+                    if (internalPurchaseImageBase64 == null || internalPurchaseImageBase64.isEmpty()) {
+                        view.evaluateJavascript("window.onInternalPurchaseReceipt && window.onInternalPurchaseReceipt(false,'Tire a foto da nota fiscal antes de salvar.');", null);
+                    } else {
+                        postInternalPurchaseReceipt(internalPurchaseImageBase64);
+                    }
+                    return true;
+                }
                 return false;
             }
         });

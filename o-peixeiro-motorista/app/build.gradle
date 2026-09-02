@@ -30,8 +30,8 @@ android {
         applicationId 'br.com.opeixeiro.motorista'
         minSdk 23
         targetSdk 36
-        versionCode 25
-        versionName '1.4.2'
+        versionCode 26
+        versionName '1.4.3'
 
         buildConfigField 'String', 'SUPABASE_URL', '"' + (cfg.getProperty('SUPABASE_URL', '')).replace('"', '\\"') + '"'
         buildConfigField 'String', 'SUPABASE_ANON_KEY', '"' + (cfg.getProperty('SUPABASE_ANON_KEY', '')).replace('"', '\\"') + '"'

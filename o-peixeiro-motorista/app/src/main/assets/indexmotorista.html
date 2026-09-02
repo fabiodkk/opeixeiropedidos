@@ -458,7 +458,7 @@
           </div>
           <label class="checkbox-group" style="margin:10px 0"><input id="purchaseMarket" type="checkbox"> Usar “Mercado” automaticamente</label>
           <div class="field"><label>Itens comprados</label><div id="purchaseItems"></div><button id="addPurchaseItemBtn" class="secondary" type="button">Adicionar item</button></div>
-          <div class="row" style="margin-top:18px"><button id="confirmInternalPurchaseBtn" class="primary">Confirmar compra e tirar foto da nota fiscal</button><button id="backFromPurchaseBtn" class="danger">Voltar</button></div>
+          <div class="row" style="margin-top:18px"><button id="confirmInternalPurchaseBtn" class="primary">Tirar foto da nota fiscal</button><button id="saveInternalPurchaseBtn" class="primary" style="display:none">Salvar compra e enviar comprovante</button><button id="backFromPurchaseBtn" class="danger">Voltar</button></div>
           <div id="purchaseStatus" class="status"></div>
         </div>
       </section>
@@ -844,6 +844,7 @@
         ui.purchaseAuthorization.addEventListener('change', () => { const cash = ui.purchaseAuthorization.value === 'cash'; ui.purchaseCashField.style.display = cash ? 'block' : 'none'; ui.purchaseResponsibleField.style.display = cash ? 'none' : 'block'; });
         ui.purchaseMarket.addEventListener('change', () => { ui.purchaseStore.value = ui.purchaseMarket.checked ? 'Mercado' : ''; ui.purchaseStore.readOnly = ui.purchaseMarket.checked; });
         document.getElementById('confirmInternalPurchaseBtn').addEventListener('click', confirmInternalPurchase);
+        document.getElementById('saveInternalPurchaseBtn').addEventListener('click', saveInternalPurchase);
       }
 
       function addPurchaseItem(item = {}) {
@@ -852,7 +853,7 @@
         row.querySelector('[data-purchase-unit]').value = item.unit || 'unidade'; row.querySelector('button').onclick = () => row.remove(); ui.purchaseItems.appendChild(row);
       }
       async function openInternalPurchase() {
-        showScreen('internal-purchase'); ui.purchaseStatus.textContent = 'Carregando pedidos e locais...'; ui.purchaseItems.innerHTML = ''; addPurchaseItem();
+        showScreen('internal-purchase'); ui.purchaseStatus.textContent = 'Carregando pedidos e locais...'; ui.purchaseItems.innerHTML = ''; document.getElementById('saveInternalPurchaseBtn').style.display = 'none'; document.getElementById('confirmInternalPurchaseBtn').disabled = false; document.getElementById('confirmInternalPurchaseBtn').textContent = 'Tirar foto da nota fiscal'; addPurchaseItem();
         const [{ data: orders, error: orderError }, { data: units, error: unitError }] = await Promise.all([
           supabaseClient.from('opeixeiro_orders').select('id,delivery_date,status,opeixeiro_units!opeixeiro_orders_destination_unit_id_fkey(name)').in('status',['submitted','scheduled_next_day']).order('delivery_date'),
           supabaseClient.from('opeixeiro_units').select('id,name,code').eq('active',true).order('name')
@@ -880,10 +881,23 @@
           window.AndroidScanner.captureInternalPurchaseReceipt(data.id, orderId, state.driver, summary);
         } catch (error) {
           ui.purchaseStatus.textContent = 'Não foi possível abrir a câmera: ' + (error?.message || 'tente novamente.');
-          button.disabled = false; button.textContent = 'Confirmar compra e tirar foto da nota fiscal';
+          button.disabled = false; button.textContent = 'Tirar foto da nota fiscal';
         }
       }
-      window.onInternalPurchaseReceipt = (ok, message) => { const button = document.getElementById('confirmInternalPurchaseBtn'); ui.purchaseStatus.textContent = message || (ok ? 'Compra registrada e nota enviada ao grupo.' : 'A foto da nota fiscal é obrigatória.'); button.disabled = false; button.textContent = 'Confirmar compra e tirar foto da nota fiscal'; if (ok) setTimeout(() => loadOrders(), 900); };
+      function saveInternalPurchase() {
+        const saveButton = document.getElementById('saveInternalPurchaseBtn');
+        if (!window.AndroidScanner?.saveInternalPurchaseReceipt) { ui.purchaseStatus.textContent = 'Abra pelo APK atualizado para salvar a foto da nota fiscal.'; return; }
+        saveButton.disabled = true; saveButton.textContent = 'Salvando compra...';
+        ui.purchaseStatus.textContent = 'Salvando a compra, o estoque adicional e enviando o comprovante ao grupo...';
+        window.AndroidScanner.saveInternalPurchaseReceipt();
+      }
+      window.onInternalPurchasePhotoCaptured = (ok, message) => {
+        const takeButton = document.getElementById('confirmInternalPurchaseBtn'), saveButton = document.getElementById('saveInternalPurchaseBtn');
+        ui.purchaseStatus.textContent = message || (ok ? 'Foto tirada. Agora toque em “Salvar compra e enviar comprovante”.' : 'A foto da nota fiscal é obrigatória.');
+        takeButton.disabled = false; takeButton.textContent = 'Tirar outra foto';
+        saveButton.style.display = ok ? '' : 'none'; saveButton.disabled = !ok; saveButton.textContent = 'Salvar compra e enviar comprovante';
+      };
+      window.onInternalPurchaseReceipt = (ok, message) => { const button = document.getElementById('confirmInternalPurchaseBtn'), saveButton = document.getElementById('saveInternalPurchaseBtn'); ui.purchaseStatus.textContent = message || (ok ? 'Compra registrada e nota enviada ao grupo.' : 'Não foi possível salvar. Tente enviar novamente.'); button.disabled = false; button.textContent = 'Tirar foto da nota fiscal'; saveButton.disabled = false; saveButton.textContent = 'Salvar compra e enviar comprovante'; if (ok) { saveButton.style.display = 'none'; setTimeout(() => loadOrders(), 900); } };
 
       async function loadDriverSummary() {
         const driver = String(state.driver || '').trim();

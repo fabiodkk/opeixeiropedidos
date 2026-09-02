@@ -90,6 +90,7 @@ public class MainActivity extends AppCompatActivity {
     private String internalPurchaseOrderId;
     private String internalPurchaseDriver;
     private String internalPurchaseSummary;
+    private String internalPurchaseImageBase64;
 
     // As versões publicadas neste repositório aparecem na tela obrigatória de atualização.
     private static final String GITHUB_REPO = "fabiodkk/opeixeiropedidos";
@@ -275,9 +276,16 @@ public class MainActivity extends AppCompatActivity {
         }
         @JavascriptInterface public void captureInternalPurchaseReceipt(String purchaseId, String orderId, String name, String summary) {
             runOnUiThread(() -> {
-                internalPurchaseId = purchaseId; internalPurchaseOrderId = orderId; internalPurchaseDriver = name; internalPurchaseSummary = summary;
+                internalPurchaseId = purchaseId; internalPurchaseOrderId = orderId; internalPurchaseDriver = name; internalPurchaseSummary = summary; internalPurchaseImageBase64 = null;
                 launchInternalPurchaseCamera();
             });
+        }
+        @JavascriptInterface public void saveInternalPurchaseReceipt() {
+            if (internalPurchaseImageBase64 == null || internalPurchaseImageBase64.isEmpty()) {
+                if (webView != null) webView.post(() -> webView.evaluateJavascript("window.onInternalPurchaseReceipt && window.onInternalPurchaseReceipt(false,'Tire a foto da nota fiscal antes de salvar.');", null));
+                return;
+            }
+            postInternalPurchaseReceipt(internalPurchaseImageBase64);
         }
     }
 
@@ -333,6 +341,7 @@ public class MainActivity extends AppCompatActivity {
                         .put("order_id", orderId).put("driver_name", driver).put("purchase_summary", summary)
                         .put("device_id", deviceAuditId()).put("receipt_base64", imageBase64);
                 postAudit(body);
+                internalPurchaseImageBase64 = null;
                 if (webView != null) webView.post(() -> webView.evaluateJavascript("window.onInternalPurchaseReceipt && window.onInternalPurchaseReceipt(true,'Compra registrada. Nota fiscal enviada ao grupo de logística.');", null));
             } catch (Exception error) {
                 if (webView != null) webView.post(() -> webView.evaluateJavascript("window.onInternalPurchaseReceipt && window.onInternalPurchaseReceipt(false,'Não foi possível enviar a nota fiscal. Tente novamente.');", null));
@@ -580,9 +589,9 @@ public class MainActivity extends AppCompatActivity {
         if (requestCode == REQUEST_INTERNAL_PURCHASE_RECEIPT) {
             if (resultCode == RESULT_OK && data != null && data.getExtras() != null && data.getExtras().get("data") instanceof Bitmap) {
                 Bitmap bitmap = (Bitmap) data.getExtras().get("data"); ByteArrayOutputStream output = new ByteArrayOutputStream(); bitmap.compress(Bitmap.CompressFormat.JPEG, 90, output);
-                postInternalPurchaseReceipt(Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP));
-            } else if (webView != null) webView.evaluateJavascript("window.onInternalPurchaseReceipt && window.onInternalPurchaseReceipt(false,'A foto da nota fiscal é obrigatória.');", null);
-            internalPurchaseId = null; internalPurchaseOrderId = null; internalPurchaseDriver = null; internalPurchaseSummary = null;
+                internalPurchaseImageBase64 = Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP);
+                if (webView != null) webView.evaluateJavascript("window.onInternalPurchasePhotoCaptured && window.onInternalPurchasePhotoCaptured(true,'Foto tirada. Agora toque em Salvar compra e enviar comprovante.');", null);
+            } else if (webView != null) webView.evaluateJavascript("window.onInternalPurchasePhotoCaptured && window.onInternalPurchasePhotoCaptured(false,'A foto da nota fiscal é obrigatória.');", null);
             return;
         }
         IntentResult result = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);

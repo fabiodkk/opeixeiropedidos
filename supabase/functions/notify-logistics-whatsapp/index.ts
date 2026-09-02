@@ -8,8 +8,8 @@ const greenApiUrl = (Deno.env.get("GREEN_API_URL") || "").replace(/\/$/, "");
 const greenInstanceId = Deno.env.get("GREEN_API_INSTANCE_ID") || "";
 const greenApiToken = Deno.env.get("GREEN_API_TOKEN") || "";
 const logisticsGroupId = Deno.env.get("GREEN_API_LOGISTICS_GROUP_CHAT_ID") || "";
-// Link público do painel. A chave/tokens jamais são enviados ao WhatsApp.
-const ordersPanelUrl = Deno.env.get("ORDERS_PANEL_URL") || "";
+// Arquivo público do painel. Ele não contém segredos de servidor.
+const ordersPanelFileUrl = Deno.env.get("ORDERS_PANEL_FILE_URL") || "";
 
 const db = createClient(supabaseUrl, serviceRoleKey);
 
@@ -58,13 +58,8 @@ function formatConfirmedItems(items: Array<{ name: string; qty: number; expected
 }
 
 async function sendGreenMessage(message: string) {
-  // A Green-API não oferece botão interativo para grupos (@g.us). O link é o
-  // atalho compatível com grupos e é anexado a cada notificação enviada.
-  const messageWithShortcut = ordersPanelUrl
-    ? `${message}\n\n👉 *Toque para Criar Pedidos*\n${ordersPanelUrl}`
-    : message;
   // O WhatsApp aceita mensagens longas, mas dividir por linha evita truncar pedidos grandes.
-  const lines = messageWithShortcut.split("\n");
+  const lines = message.split("\n");
   const chunks: string[] = [];
   let current = "";
   for (const line of lines) {
@@ -83,6 +78,22 @@ async function sendGreenMessage(message: string) {
       body: JSON.stringify({ chatId: logisticsGroupId, message: prefix + chunks[index] }),
     });
     if (!response.ok) throw new Error(`Green-API returned ${response.status}`);
+  }
+
+  // Em grupos, a Green-API não suporta botão interativo. Enviamos o arquivo
+  // atualizado como documento no fim da notificação, sem tokens ou chaves.
+  if (ordersPanelFileUrl) {
+    const response = await fetch(`${greenApiUrl}/waInstance${greenInstanceId}/sendFileByUrl/${greenApiToken}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chatId: logisticsGroupId,
+        urlFile: ordersPanelFileUrl,
+        fileName: "index.html",
+        caption: "📄 *Toque para Criar Pedidos*\nArquivo index.html atualizado do painel de pedidos.",
+      }),
+    });
+    if (!response.ok) throw new Error(`Green-API file delivery returned ${response.status}`);
   }
 }
 

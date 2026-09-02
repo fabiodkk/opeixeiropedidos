@@ -1,0 +1,1195 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>O Peixeiro - Painel de pedidos</title>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.5.2/qrcode.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+      :root {
+        --bg: #07131b;
+        --bg-2: #0b1d25;
+        --panel: #0f2129;
+        --panel-2: #102b35;
+        --card: #1a2a33;
+        --card-strong: #1f5f66;
+        --primary: #2b8277;
+        --primary-2: #238f84;
+        --accent: #7bd7d4;
+        --text: #f2f7f7;
+        --muted: #bfd2d6;
+        --warning: #ffd75c;
+        --danger: #ff6b6b;
+        --line: rgba(123, 215, 212, 0.2);
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        font-family: Arial, Helvetica, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      button, input {
+        font: inherit;
+      }
+
+      .app-shell {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 24px 18px 40px;
+      }
+
+      .header {
+        background: var(--panel);
+        border-radius: 18px;
+        padding: 22px 20px;
+        margin-bottom: 18px;
+        border: 1px solid var(--line);
+      }
+
+      .brand-row {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 6px;
+      }
+
+      .brand-icon {
+        width: 56px;
+        height: 56px;
+        object-fit: cover;
+        border-radius: 16px;
+        border: 2px solid rgba(123, 215, 212, 0.4);
+        background: #081a22;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+      }
+
+      .title {
+        font-size: clamp(2rem, 4vw, 3rem);
+        font-weight: 700;
+        margin: 0 0 6px;
+      }
+
+      .subtitle {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.96rem;
+      }
+
+      .panel {
+        background: #0e2b35;
+        border-radius: 18px;
+        padding: 18px;
+        margin-bottom: 18px;
+        border: 1px solid var(--line);
+      }
+
+      .panel h2 {
+        margin: 0 0 6px;
+        font-size: clamp(1.6rem, 3vw, 2.4rem);
+      }
+
+      .panel p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .menu {
+        display: grid;
+        gap: 12px;
+      }
+
+      .card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: var(--card);
+        border: 1px solid rgba(123, 215, 212, 0.18);
+        border-radius: 14px;
+        padding: 18px 18px;
+        color: white;
+        text-decoration: none;
+        transition: transform 0.15s ease, border-color 0.15s ease;
+        width: 100%;
+        cursor: pointer;
+      }
+
+      .card:hover {
+        transform: translateY(-1px);
+        border-color: rgba(123, 215, 212, 0.55);
+      }
+
+      .card .text strong {
+        display: block;
+        font-size: 1.08rem;
+        margin-bottom: 4px;
+      }
+
+      .card .text span {
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      .receipt-contribution { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+      .receipt-items { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+      .receipt-item { background: rgba(123,215,212,.1); border: 1px solid var(--line); border-radius: 999px; padding: 5px 8px; color: var(--text); font-size: .82rem; }
+
+      .badge {
+        background: rgba(123, 215, 212, 0.12);
+        color: var(--accent);
+        min-width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        font-weight: 700;
+      }
+
+      .profile {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        background: rgba(19, 56, 66, 0.8);
+        padding: 12px 14px;
+        border-radius: 12px;
+      }
+
+      .profile strong {
+        color: var(--accent);
+      }
+
+      .pill {
+        padding: 10px 16px;
+        background: var(--primary-2);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .tabs {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin: 12px 0 18px;
+      }
+
+      .tab-button {
+        background: #18333d;
+        color: var(--text);
+        border: 1px solid transparent;
+        padding: 10px 16px;
+        border-radius: 10px;
+        cursor: pointer;
+      }
+
+      .tab-button.active {
+        background: var(--primary);
+        border-color: rgba(123, 215, 212, 0.5);
+      }
+
+      .tab-panel {
+        display: none;
+      }
+
+      .tab-panel.active {
+        display: block;
+      }
+
+      .toolbar {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+      }
+
+      .toolbar input {
+        flex: 1;
+        min-width: 220px;
+        background: #123b43;
+        border: 1px solid var(--line);
+        color: var(--text);
+        border-radius: 12px;
+        padding: 12px 14px;
+      }
+
+      .toolbar button,
+      .mini-action {
+        padding: 12px 16px;
+        border: none;
+        border-radius: 12px;
+        background: var(--primary);
+        color: white;
+        cursor: pointer;
+      }
+
+      .toolbar-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+      }
+
+      .mini-action {
+        background: #18333d;
+        border: 1px solid var(--line);
+        font-size: 0.82rem;
+      }
+
+      .catalog {
+        max-height: 620px;
+        overflow-y: auto;
+        display: grid;
+        gap: 10px;
+        padding-right: 6px;
+      }
+
+      .product-item {
+        display: grid;
+        grid-template-columns: minmax(0, 1.6fr) 85px 100px 40px;
+        align-items: center;
+        gap: 10px;
+        background: rgba(15, 33, 41, 0.9);
+        border: 1px solid rgba(123, 215, 212, 0.14);
+        border-radius: 12px;
+        padding: 10px 12px;
+      }
+
+      .product-name {
+        font-weight: 700;
+        color: var(--text);
+      }
+
+      .qty-meta {
+        font-size: 0.75rem;
+        color: var(--muted);
+      }
+
+      .qty-box {
+        width: 100%;
+        background: #123b43;
+        border: 1px solid var(--line);
+        color: var(--text);
+        border-radius: 10px;
+        padding: 8px 10px;
+        text-align: center;
+      }
+
+      .stepper {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+      }
+
+      .stepper button {
+        width: 28px;
+        height: 28px;
+        border: none;
+        border-radius: 8px;
+        background: #1d5b60;
+        color: white;
+        cursor: pointer;
+        font-weight: 700;
+      }
+
+      .summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 16px;
+        background: rgba(17, 40, 50, 0.9);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 14px 16px;
+      }
+
+      .summary strong {
+        font-size: 1.2rem;
+      }
+
+      .primary-btn {
+        border: none;
+        background: var(--primary);
+        color: white;
+        border-radius: 10px;
+        padding: 12px 18px;
+        cursor: pointer;
+        font-weight: 700;
+      }
+
+      .subtle {
+        color: var(--muted);
+        font-size: 0.8rem;
+      }
+
+      .qr-box {
+        display: flex;
+        gap: 16px;
+        align-items: flex-start;
+        flex-wrap: wrap;
+        margin-top: 12px;
+      }
+
+      #qrcode {
+        width: 220px;
+        height: 220px;
+        background: white;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+      }
+
+      #qrPayload {
+        flex: 1;
+        min-width: 260px;
+        background: #0d2027;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 14px;
+        white-space: pre-wrap;
+        word-break: break-word;
+        color: var(--text);
+      }
+
+      .status-tag {
+        display: inline-block;
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        background: rgba(123, 215, 212, 0.12);
+        color: var(--accent);
+      }
+
+      .footer-note {
+        margin-top: 18px;
+        color: var(--muted);
+        font-size: 0.83rem;
+        text-align: center;
+      }
+
+      @media (max-width: 700px) {
+        .product-item {
+          grid-template-columns: 1fr;
+        }
+
+        .stepper {
+          justify-content: flex-start;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="header">
+        <div class="brand-row">
+          <img
+            class="brand-icon"
+            src="o peixeiro pedidos/opeixeiropedidos.png"
+            alt="Ícone O Peixeiro"
+          />
+          <h1 class="title">O Peixeiro</h1>
+        </div>
+        <p class="subtitle">Pedidos • despacho • auditoria</p>
+      </header>
+
+      <section id="step-profile" class="panel">
+        <h2>Primeiro acesso</h2>
+        <p>Conexão é necessária nesta tela para validar perfis cadastrados no Supabase.</p>
+        <div class="grid" style="margin-top: 16px;">
+          <div class="field"><label for="panelProfileSelect">Perfil já cadastrado</label><select id="panelProfileSelect"><option>Carregando perfis...</option></select></div>
+          <div class="field" id="panelPasswordField" style="display:none"><label for="panelPassword">Senha</label><input id="panelPassword" type="password" autocomplete="current-password" placeholder="Informe sua senha" /></div>
+          <div class="row"><button id="panelEnterBtn" class="primary-btn">Entrar no sistema</button><button id="panelRefreshBtn" class="mini-action">Atualizar perfis</button><button id="panelCreateBtn" class="mini-action">Criar outro perfil</button></div>
+          <div id="panelCreateBox" class="field" style="display:none"><label for="panelNewName">Nome do novo perfil</label><div class="row"><input id="panelNewName" placeholder="Digite somente o nome" /><button id="panelSaveNewBtn" class="mini-action">Salvar perfil</button></div></div>
+          <div id="panelAuthStatus" class="small"></div>
+        </div>
+      </section>
+
+      <section id="step-unit" class="panel" style="display: none;">
+        <h2>Etapa 2 · Qual é o peixeiro / estoque?</h2>
+        <p id="selectedProfileLabel">Perfil: --</p>
+        <div class="menu" style="margin-top: 16px;">
+          <button class="card unit-button" data-unit="P1"><div class="text"><strong>P1</strong><span>Selecionar unidade</span></div><span class="badge">✓</span></button>
+          <button class="card unit-button" data-unit="P2"><div class="text"><strong>P2</strong><span>Selecionar unidade</span></div><span class="badge">✓</span></button>
+          <button class="card unit-button" data-unit="P3"><div class="text"><strong>P3</strong><span>Selecionar unidade</span></div><span class="badge">✓</span></button>
+          <button class="card unit-button" data-unit="P4"><div class="text"><strong>P4</strong><span>Selecionar unidade</span></div><span class="badge">✓</span></button>
+          <button class="card unit-button" data-unit="P5"><div class="text"><strong>P5</strong><span>Selecionar unidade</span></div><span class="badge">✓</span></button>
+          <button class="card unit-button" data-unit="P6"><div class="text"><strong>P6</strong><span>Selecionar unidade</span></div><span class="badge">✓</span></button>
+          <button class="card unit-button" data-unit="PEIXARIA"><div class="text"><strong>PEIXARIA</strong><span>Selecionar unidade</span></div><span class="badge">✓</span></button>
+          <button class="card unit-button" data-unit="PEIXARIA_BEBIDAS"><div class="text"><strong>PEIXARIA_BEBIDAS</strong><span>Selecionar unidade</span></div><span class="badge">✓</span></button>
+          <button class="card unit-button" data-unit="PEIXARIA_COMIDA"><div class="text"><strong>PEIXARIA_COMIDA</strong><span>Selecionar unidade</span></div><span class="badge">✓</span></button>
+        </div>
+      </section>
+
+      <section id="step-dashboard" class="panel" style="display: none;">
+        <div class="profile" style="margin-top: 0; margin-bottom: 18px;">
+          <div>
+            <div>Logado como:</div>
+            <strong id="dashboardUser">-- • --</strong>
+          </div>
+          <button class="pill" id="btnTrocar">Trocar</button>
+        </div>
+
+        <h2>Painel de pedidos</h2>
+        <p id="dashboardMeta">Perfil: -- • Unidade: --</p>
+
+        <div class="tabs" aria-label="Abas principais">
+          <button class="tab-button active" data-tab="pedidos">Pedidos</button>
+          <button class="tab-button" data-tab="conferencia">Conferência</button>
+          <button class="tab-button" data-tab="recebimento">Recebimento</button>
+          <button class="tab-button" data-tab="despacho">Despacho</button>
+          <button class="tab-button" data-tab="origens">Corrigir coleta</button>
+          <button class="tab-button" data-tab="configuracoes">Configurações</button>
+        </div>
+
+        <div id="tab-pedidos" class="tab-panel active">
+          <div class="toolbar">
+            <input id="searchInput" type="text" placeholder="Buscar produto..." />
+            <button id="resetPedido">Zerar tudo</button>
+          </div>
+          <div class="toolbar-actions">
+            <button class="mini-action" id="clearBebidasBtn">Zerar todas as bebidas</button>
+            <button class="mini-action" id="clearAlimentosBtn">Zerar todos os alimentos</button>
+          </div>
+          <div class="panel" style="margin: 0 0 16px; background: rgba(16,43,53,.7);">
+            <h2 style="font-size:1.15rem">Não encontrou o produto?</h2>
+            <p class="small">Crie e inclua no seu pedido. Exemplo: Itubaína 600 ml.</p>
+            <div class="grid">
+              <div class="field"><label for="customProductName">Produto</label><input id="customProductName" placeholder="Ex.: Itubaína" /></div>
+              <div class="field"><label for="customProductSize">Apresentação / tamanho</label><input id="customProductSize" placeholder="Ex.: 600 ml" /></div>
+              <div class="field"><label for="customProductUnit">Unidade</label><select id="customProductUnit"><option value="unidade">Unidade</option><option value="caixa">Caixa</option><option value="pacote">Pacote</option><option value="barril">Barril</option><option value="maço de cana">Maço de cana</option><option value="kg">Quilo (kg)</option><option value="g">Grama (g)</option><option value="litro">Litro</option><option value="ml">Mililitro (ml)</option></select></div>
+              <div class="field"><label for="customProductOrigin">De onde este produto costuma vir? (obrigatório)</label><select id="customProductOrigin"><option value="">Carregando locais...</option></select></div>
+              <div class="field"><label for="customProductQty">Quantidade</label><input id="customProductQty" type="number" min="0.001" step="0.001" value="1" /></div>
+            </div>
+            <button id="addCustomProductBtn" class="mini-action">Adicionar ao pedido</button>
+            <div id="customProductStatus" class="small"></div>
+          </div>
+          <div id="catalog" class="catalog"></div>
+          <div class="summary">
+            <div>
+              <div class="subtle">Quantidade total solicitada</div>
+              <strong id="summaryQty">0</strong>
+            </div>
+            <button class="primary-btn" id="generateQrBtn">Enviar para despacho</button>
+          </div>
+        </div>
+
+        <div id="tab-conferencia" class="tab-panel">
+          <div class="panel" style="margin-top: 0; background: rgba(16, 43, 53, 0.7);">
+            <h2>Conferência</h2>
+            <p>Dados reais de pedidos, motorista e coleta para esta unidade.</p>
+            <div id="conferenceList" class="menu" style="margin-top: 16px;"></div>
+          </div>
+        </div>
+
+        <div id="tab-recebimento" class="tab-panel">
+          <div class="panel" style="margin-top: 0; background: rgba(16, 43, 53, 0.7);">
+            <h2>Recebimento no destino</h2>
+            <p>Bar e cozinha podem conferir suas partes separadamente. São permitidos até dois QRs por entrega.</p>
+            <div id="receiptOrders" class="menu" style="margin-top: 16px;"></div>
+            <div id="receiptQrList" class="menu" style="margin-top: 16px;"></div>
+          </div>
+        </div>
+
+        <div id="tab-despacho" class="tab-panel">
+          <div class="panel" style="margin-top: 0; background: rgba(16, 43, 53, 0.7);">
+            <h2>Despacho e liberação de coleta</h2>
+            <p class="small">Selecione um pedido e um ponto de coleta. Cada ponto gera seu próprio QR de liberação para o motorista.</p>
+            <div class="tabs" style="margin:16px 0 8px"><button class="mini-action dispatch-view active" data-dispatch-view="pending">Pendentes</button><button class="mini-action dispatch-view" data-dispatch-view="mine">Meus pendentes</button><button class="mini-action dispatch-view" data-dispatch-view="completed">Concluídos</button></div>
+            <div id="completedDispatchFilters" class="row" style="display:none; margin:10px 0"><select id="completedDispatchPeriod" style="max-width:220px"><option value="today">Hoje</option><option value="one">1 dia atrás</option><option value="three">Até 3 dias</option><option value="week">Última semana</option><option value="all">Todas as datas</option></select><input id="completedDispatchDate" type="date" style="max-width:180px"><button id="refreshCompletedDispatch" class="mini-action">Filtrar</button></div>
+            <div id="dispatchOrders" class="menu" style="margin-top: 16px;"></div>
+            <div id="completedDispatchOrders" class="menu" style="display:none; margin-top: 16px;"></div>
+            <div id="dispatchQrList" class="menu" style="margin-top: 16px;"><p class="small">Nenhuma liberação gerada ainda.</p></div>
+          </div>
+        </div>
+
+        <div id="tab-origens" class="tab-panel">
+          <div class="panel" style="margin-top:0; background:rgba(16,43,53,.7)">
+            <h2>Corrigir ponto de coleta</h2>
+            <p class="small">Apenas os itens enviados pelo seu perfil aparecem aqui. A correção é possível antes de o despacho liberar ou o motorista coletar.</p>
+            <div id="originCorrections" class="menu" style="margin-top:16px"></div>
+          </div>
+        </div>
+
+        <div id="tab-configuracoes" class="tab-panel">
+          <div class="panel" style="margin-top:0; background:rgba(16,43,53,.7)">
+            <h2>Ajuda por voz</h2>
+            <p class="small">Use esta ajuda para ouvir o que aparece na tela antes de preencher o pedido. Os horários operacionais ficam somente no painel administrativo.</p>
+            <div class="profile" style="margin-top:16px">
+              <div><strong id="voiceAssistantState">Assistente de leitura desativado</strong><div class="small">Quando ativado, você poderá ouvir a aba que estiver aberta.</div></div>
+              <button id="toggleVoiceAssistantBtn" class="pill" aria-pressed="false">Ativar</button>
+            </div>
+            <div class="row" style="margin-top:16px"><button id="readCurrentScreenBtn" class="primary-btn" disabled>Ouvir esta tela</button><button id="stopReadingBtn" class="mini-action" disabled>Parar leitura</button></div>
+            <p id="voiceAssistantStatus" class="small">Ative o assistente para começar.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="footer-note">Fluxo em etapas: perfil → unidade → pedidos → QR</div>
+    </div>
+
+    <script>
+      const SUPABASE_URL = 'https://suipuquznkksgrkchqrv.supabase.co';
+      const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1aXB1cXV6bmtrc2dya2NocXJ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzNjc4NTksImV4cCI6MjA5NDk0Mzg1OX0.YF-_OfI6SC3aJvob6VB4C4qz3GXaUaAuezOg5eV1_GE';
+      const dispatchDb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      const state = {
+        profile: '',
+        unit: '',
+        catalog: [],
+        units: [],
+        unitsById: {},
+        pendingKey: 'opeixeiro_pending_order_v1',
+        dispatchWatchTimer: null,
+        panelUsers: [],
+        passwordRequired: false
+      };
+
+      function setPanelAuthStatus(message, error = false) {
+        const el = document.getElementById('panelAuthStatus');
+        el.textContent = message;
+        el.style.color = error ? 'var(--danger)' : 'var(--accent)';
+      }
+
+      async function loadPanelProfiles() {
+        const select = document.getElementById('panelProfileSelect');
+        select.innerHTML = '<option value="">Carregando perfis...</option>';
+        if (!navigator.onLine) { setPanelAuthStatus('Conecte-se à internet para entrar pela primeira vez.', true); return; }
+        const [{ data: users, error }, { data: settings, error: settingsError }] = await Promise.all([
+          dispatchDb.from('opeixeiro_panel_users').select('display_name,default_unit_code').eq('active', true).order('display_name'),
+          dispatchDb.from('opeixeiro_access_settings').select('password_required').eq('id', true).maybeSingle()
+        ]);
+        if (error || settingsError) { setPanelAuthStatus('Não foi possível carregar os perfis: ' + (error || settingsError).message, true); return; }
+        state.panelUsers = users || [];
+        state.passwordRequired = Boolean(settings?.password_required);
+        document.getElementById('panelPasswordField').style.display = state.passwordRequired ? 'block' : 'none';
+        select.innerHTML = '<option value="">Selecione seu perfil</option>' + state.panelUsers.map(user => `<option value="${user.display_name}">${user.display_name}${user.default_unit_code ? ' • ' + user.default_unit_code : ''}</option>`).join('');
+        setPanelAuthStatus(state.passwordRequired ? 'Senha obrigatória para os perfis configurados.' : 'Perfis carregados. Senha desativada por enquanto.');
+      }
+
+      async function createPanelProfile() {
+        const input = document.getElementById('panelNewName');
+        const name = input.value.trim();
+        if (!name) { setPanelAuthStatus('Digite o nome do novo perfil.', true); return; }
+        const { error } = await dispatchDb.from('opeixeiro_panel_users').insert({ display_name: name, active: true });
+        if (error) { setPanelAuthStatus('Não foi possível criar o perfil: ' + error.message, true); return; }
+        input.value = '';
+        document.getElementById('panelCreateBox').style.display = 'none';
+        await loadPanelProfiles();
+        document.getElementById('panelProfileSelect').value = name;
+        setPanelAuthStatus('Perfil criado. Selecione a unidade para continuar.');
+      }
+
+      async function enterPanel() {
+        const selected = document.getElementById('panelProfileSelect').value;
+        const user = state.panelUsers.find(item => item.display_name === selected);
+        if (!user) { setPanelAuthStatus('Selecione um perfil cadastrado ou crie outro.', true); return; }
+        const { data: allowed, error } = await dispatchDb.rpc('opeixeiro_verify_access', { p_kind: 'panel', p_display_name: user.display_name, p_password: document.getElementById('panelPassword').value || null });
+        if (error || !allowed) { setPanelAuthStatus(error ? 'Falha ao validar senha: ' + error.message : 'Senha inválida.', true); return; }
+        state.profile = user.display_name;
+        if (user.default_unit_code) {
+          state.unit = user.default_unit_code;
+          openDashboard();
+          return;
+        }
+        document.getElementById('selectedProfileLabel').textContent = 'Perfil: ' + state.profile;
+        showStep('step-unit');
+      }
+
+      function setVoiceAssistant(enabled) {
+        const toggle = document.getElementById('toggleVoiceAssistantBtn');
+        const stateLabel = document.getElementById('voiceAssistantState');
+        const readButton = document.getElementById('readCurrentScreenBtn');
+        const stopButton = document.getElementById('stopReadingBtn');
+        const status = document.getElementById('voiceAssistantStatus');
+        if (!('speechSynthesis' in window)) {
+          toggle.disabled = true;
+          status.textContent = 'Este aparelho não oferece leitura por voz neste navegador.';
+          status.style.color = 'var(--danger)';
+          return;
+        }
+        localStorage.setItem('opeixeiro_voice_assistant_enabled', enabled ? 'true' : 'false');
+        toggle.textContent = enabled ? 'Desativar' : 'Ativar';
+        toggle.setAttribute('aria-pressed', String(enabled));
+        stateLabel.textContent = enabled ? 'Assistente de leitura ativado' : 'Assistente de leitura desativado';
+        readButton.disabled = !enabled;
+        stopButton.disabled = !enabled;
+        status.textContent = enabled ? 'Toque em “Ouvir esta tela” sempre que quiser ajuda.' : 'Ative o assistente para começar.';
+        status.style.color = enabled ? 'var(--accent)' : 'var(--muted)';
+        if (!enabled) window.speechSynthesis.cancel();
+      }
+
+      function readCurrentScreen() {
+        if (localStorage.getItem('opeixeiro_voice_assistant_enabled') !== 'true') return;
+        const active = document.querySelector('.tab-panel.active');
+        const text = (active?.innerText || '').replace(/\s+/g, ' ').trim();
+        if (!text) return;
+        window.speechSynthesis.cancel();
+        const message = new SpeechSynthesisUtterance(text);
+        message.lang = 'pt-BR';
+        message.rate = 0.9;
+        window.speechSynthesis.speak(message);
+        document.getElementById('voiceAssistantStatus').textContent = 'Lendo as informações da tela.';
+      }
+
+      function isBeverage(name) {
+        const text = name.toLowerCase();
+        return /heineken|coca|fys|polpa|agua|refrigerante|bebida/.test(text);
+      }
+
+      function isFood(name) {
+        return !isBeverage(name);
+      }
+
+      async function buildCatalog() {
+        const catalog = document.getElementById('catalog');
+        catalog.innerHTML = '<p class="small">Carregando catálogo...</p>';
+        const [{ data, error }, { data: units, error: unitsError }] = await Promise.all([
+          dispatchDb.from('opeixeiro_products')
+            .select('id,canonical_name,category,base_unit,default_origin_unit_id,is_emergency')
+            .eq('active', true).order('category').order('canonical_name'),
+          dispatchDb.from('opeixeiro_units').select('id,name,code').eq('active', true).order('name')
+        ]);
+        if (error || unitsError) { catalog.innerHTML = '<p class="small">Não foi possível carregar o catálogo: ' + (error || unitsError).message + '</p>'; return; }
+        state.units = units || [];
+        state.unitsById = Object.fromEntries(state.units.map(unit => [unit.id, unit]));
+        const products = (data || []).map(product => ({
+          id: product.id,
+          name: product.canonical_name,
+          qty: 0,
+          historical: 0,
+          unit: product.base_unit || 'unidade',
+          originUnitId: product.default_origin_unit_id || null,
+          category: product.category || 'geral',
+          isEmergency: Boolean(product.is_emergency)
+        }));
+
+        const pending = readPendingOrder();
+        if (pending && Array.isArray(pending.items)) {
+          const map = new Map(pending.items.map(item => [item.name, item]));
+          products.forEach(item => {
+            if (map.has(item.name)) {
+              const saved = map.get(item.name);
+              item.qty = Math.max(0, Number(saved.qty) || 0);
+              item.unit = saved.unit || item.unit;
+              item.originUnitId = saved.origin_unit_id || null;
+            }
+          });
+          pending.items.filter(item => !products.some(product => product.name === item.name)).forEach((item, index) => products.push({ id: 'custom-' + index, name: item.name, qty: Math.max(0, Number(item.qty) || 0), historical: 0, unit: item.unit || 'unidade', originUnitId: item.origin_unit_id || null, isEmergency: Boolean(item.is_emergency) }));
+        }
+
+        state.catalog = products;
+        renderCatalog();
+      }
+
+      function originLabel(originUnitId) {
+        const unit = state.unitsById[originUnitId];
+        return unit ? unit.name : 'Origem ainda não cadastrada';
+      }
+
+      function renderCatalog() {
+        const filter = document.getElementById('searchInput').value.toLowerCase();
+        const catalog = document.getElementById('catalog');
+        catalog.innerHTML = '';
+
+        const items = state.catalog.filter(item => item.name.toLowerCase().includes(filter));
+
+        items.forEach(item => {
+          const row = document.createElement('div');
+          row.className = 'product-item';
+
+          const productInfo = document.createElement('div');
+          productInfo.innerHTML = `
+            <div class="product-name">${item.name}</div>
+            <div class="qty-meta">${item.unit || 'unidade'} · Coleta: ${originLabel(item.originUnitId)}</div>
+          `;
+
+          const qtyInput = document.createElement('input');
+          qtyInput.type = 'number';
+          qtyInput.min = '0';
+          qtyInput.value = item.qty;
+          qtyInput.className = 'qty-box';
+          qtyInput.addEventListener('input', (e) => {
+            const v = Math.max(0, Number(e.target.value) || 0);
+            item.qty = v;
+            updateSummary();
+          });
+
+          const stepper = document.createElement('div');
+          stepper.className = 'stepper';
+
+          const minus = document.createElement('button');
+          minus.textContent = '-';
+          minus.onclick = () => {
+            item.qty = Math.max(0, (item.qty || 0) - 1);
+            qtyInput.value = item.qty;
+            updateSummary();
+          };
+
+          const plus = document.createElement('button');
+          plus.textContent = '+';
+          plus.onclick = () => {
+            item.qty = (item.qty || 0) + 1;
+            qtyInput.value = item.qty;
+            updateSummary();
+          };
+
+          stepper.appendChild(minus);
+          stepper.appendChild(plus);
+
+          const flag = document.createElement('div');
+          flag.className = 'status-tag';
+          flag.textContent = item.isEmergency ? 'Emergência' : 'Origem definida';
+
+          row.appendChild(productInfo);
+          row.appendChild(qtyInput);
+          row.appendChild(stepper);
+          row.appendChild(flag);
+          catalog.appendChild(row);
+        });
+
+        updateSummary();
+      }
+
+      function updateSummary() {
+        const total = state.catalog.reduce((sum, item) => sum + (Number(item.qty) || 0), 0);
+        document.getElementById('summaryQty').textContent = total;
+      }
+
+      function clearCategory(category) {
+        state.catalog.forEach(item => {
+          if (category === 'bebidas' && isBeverage(item.name)) item.qty = 0;
+          if (category === 'alimentos' && isFood(item.name)) item.qty = 0;
+          if (category === 'todos') item.qty = 0;
+        });
+        renderCatalog();
+      }
+
+      function addCustomProduct() {
+        const baseName = document.getElementById('customProductName').value.trim();
+        const size = document.getElementById('customProductSize').value.trim();
+        const unit = document.getElementById('customProductUnit').value;
+        const originUnitId = document.getElementById('customProductOrigin').value;
+        const qty = Number(document.getElementById('customProductQty').value);
+        const status = document.getElementById('customProductStatus');
+        if (!baseName || !originUnitId || !Number.isFinite(qty) || qty <= 0) { status.textContent = 'Informe produto, origem habitual e quantidade maior que zero.'; status.style.color = 'var(--danger)'; return; }
+        const name = size ? `${baseName} ${size}` : baseName;
+        const existing = state.catalog.find(item => item.name.toLocaleLowerCase() === name.toLocaleLowerCase() && item.unit === unit && item.originUnitId === originUnitId);
+        if (existing) existing.qty += qty;
+        else state.catalog.unshift({ id: 'custom-' + Date.now(), name, qty, unit, originUnitId, historical: 0, isEmergency: true });
+        document.getElementById('customProductName').value = '';
+        document.getElementById('customProductSize').value = '';
+        document.getElementById('customProductQty').value = '1';
+        const originName = document.getElementById('customProductOrigin').selectedOptions[0]?.textContent || 'origem definida';
+        status.textContent = `${name} adicionado ao pedido em ${unit}. Coleta: ${originName}.`;
+        status.style.color = 'var(--primary-2)';
+        renderCatalog();
+      }
+
+      function escapeText(value) {
+        const el = document.createElement('div');
+        el.textContent = String(value ?? '');
+        return el.innerHTML;
+      }
+
+      async function loadOriginCorrections() {
+        const container = document.getElementById('originCorrections');
+        container.innerHTML = '<p class="small">Carregando suas solicitações...</p>';
+        if (!state.units.length) await buildCatalog();
+        const { data, error } = await dispatchDb.from('opeixeiro_orders')
+          .select('id,delivery_date,status,opeixeiro_units!opeixeiro_orders_destination_unit_id_fkey(name,code),opeixeiro_order_contributions(requester_name,items)')
+          .in('status', ['submitted','scheduled_next_day'])
+          .order('delivery_date');
+        if (error) { container.innerHTML = '<p class="small">Não foi possível carregar correções: ' + escapeText(error.message) + '</p>'; return; }
+        const mine = (data || []).map(order => ({ ...order, contribution: (order.opeixeiro_order_contributions || []).find(c => String(c.requester_name).trim().toLocaleLowerCase() === String(state.profile).trim().toLocaleLowerCase()) })).filter(order => order.contribution);
+        const options = state.units.map(unit => `<option value="${unit.id}">${escapeText(unit.name)}</option>`).join('');
+        container.innerHTML = mine.map(order => {
+          const items = order.contribution.items || [];
+          return `<div class="card" style="align-items:flex-start;cursor:default" data-origin-correction="${order.id}"><div class="text"><strong>Seu pedido para ${escapeText(order.opeixeiro_units?.name || order.opeixeiro_units?.code || 'destino')}</strong><span>Entrega: ${escapeText(order.delivery_date)}. Escolha somente um ponto de coleta por item.</span>${items.map(item => `<div class="row" style="margin-top:8px"><span style="min-width:220px">${escapeText(item.name)} · ${escapeText(item.qty)} ${escapeText(item.unit || 'unidade')}</span><select data-correction-origin data-name="${escapeText(item.name)}" data-unit="${escapeText(item.unit || 'unidade')}">${options}</select></div>`).join('')}<button class="mini-action" data-save-origin-correction="${order.id}" style="margin-top:12px">Salvar minhas correções</button></div></div>`;
+        }).join('') || '<p class="small">Não há pedidos seus que possam ter o ponto de coleta corrigido.</p>';
+        mine.forEach(order => {
+          const card = container.querySelector(`[data-origin-correction="${order.id}"]`);
+          (order.contribution.items || []).forEach(item => {
+            const select = [...card.querySelectorAll('[data-correction-origin]')].find(input => input.dataset.name === item.name && input.dataset.unit === (item.unit || 'unidade'));
+            if (select) select.value = item.origin_unit_id || '';
+          });
+        });
+        container.querySelectorAll('[data-save-origin-correction]').forEach(button => button.addEventListener('click', async () => {
+          const card = button.closest('[data-origin-correction]');
+          const items = [...card.querySelectorAll('[data-correction-origin]')].map(select => ({ name: select.dataset.name, unit: select.dataset.unit, origin_unit_id: select.value }));
+          if (items.some(item => !item.origin_unit_id)) { alert('Escolha o ponto de coleta de todos os itens.'); return; }
+          button.disabled = true;
+          button.textContent = 'Salvando...';
+          const { error: saveError } = await dispatchDb.rpc('opeixeiro_correct_requester_pickup_origins', { p_order_id: button.dataset.saveOriginCorrection, p_requester_name: state.profile, p_items: items });
+          if (saveError) { alert('Não foi possível salvar a correção: ' + saveError.message); button.disabled = false; button.textContent = 'Salvar minhas correções'; return; }
+          alert('Pontos de coleta atualizados. O despacho já receberá a rota corrigida.');
+          loadOriginCorrections();
+        }));
+      }
+
+      function readPendingOrder() {
+        try {
+          const raw = localStorage.getItem(state.pendingKey);
+          return raw ? JSON.parse(raw) : null;
+        } catch (e) {
+          return null;
+        }
+      }
+
+      function savePendingOrder(payload) {
+        localStorage.setItem(state.pendingKey, JSON.stringify(payload));
+      }
+
+      function showStep(stepId) {
+        document.getElementById('step-profile').style.display = stepId === 'step-profile' ? 'block' : 'none';
+        document.getElementById('step-unit').style.display = stepId === 'step-unit' ? 'block' : 'none';
+        document.getElementById('step-dashboard').style.display = stepId === 'step-dashboard' ? 'block' : 'none';
+      }
+
+      function openDashboard() {
+        document.getElementById('dashboardUser').textContent = state.profile + ' • ' + state.unit;
+        document.getElementById('dashboardMeta').textContent = 'Perfil: ' + state.profile + ' • Unidade: ' + state.unit;
+        showStep('step-dashboard');
+        loadCustomProductOrigins();
+      }
+
+      async function loadCustomProductOrigins() {
+        const select = document.getElementById('customProductOrigin');
+        const { data, error } = await dispatchDb.from('opeixeiro_units').select('id,name,code').eq('active', true).order('name');
+        if (error) { select.innerHTML = '<option value="">Não foi possível carregar locais</option>'; return; }
+        select.innerHTML = '<option value="">Selecione de onde costuma vir</option>' + (data || []).map(unit => `<option value="${unit.id}">${unit.name}</option>`).join('');
+        const peixaria = (data || []).find(unit => unit.code === 'PEIXARIA');
+        if (peixaria) select.value = peixaria.id;
+      }
+
+      function generatePayload() {
+        const selected = state.catalog.filter(item => Number(item.qty) > 0);
+        const items = selected.map(item => ({ name: item.name, qty: Number(item.qty), unit: item.unit || 'unidade', origin_unit_id: item.originUnitId || null, is_emergency: Boolean(item.isEmergency) }));
+        const payload = {
+          profile: state.profile,
+          unit: state.unit,
+          generatedAt: new Date().toISOString(),
+          items
+        };
+
+        savePendingOrder(payload);
+        return JSON.stringify(payload, null, 2);
+      }
+
+      async function generateQr() {
+        if (!state.catalog.some(item => Number(item.qty) > 0)) {
+          alert('Adicione ao menos um produto antes de enviar para despacho.');
+          return;
+        }
+        const payload = JSON.parse(generatePayload());
+        const { error } = await dispatchDb.rpc('opeixeiro_submit_consolidated_order', {
+          p_destination_code: state.unit,
+          p_requester_name: state.profile,
+          p_items: payload.items
+        });
+        if (error) {
+          alert('Não foi possível enviar o pedido consolidado: ' + error.message);
+          return;
+        }
+        localStorage.removeItem(state.pendingKey);
+        alert('Pedido enviado. Solicitações da mesma unidade serão somadas nesta entrega.');
+        document.querySelector('[data-tab="despacho"]').click();
+      }
+
+      async function loadConference() {
+        const container = document.getElementById('conferenceList');
+        container.innerHTML = '<p class="small">Carregando conferências...</p>';
+        const { data, error } = await dispatchDb.from('opeixeiro_orders').select('id,delivery_date,status,opeixeiro_units!opeixeiro_orders_destination_unit_id_fkey(code,name),opeixeiro_order_items(requested_qty,mandatory_carryover_qty,unit,opeixeiro_products(canonical_name)),opeixeiro_dispatch_releases(driver_name,status,checker_name,scanned_at,departed_at)').in('status',['submitted','scheduled_next_day','delivered']).order('delivery_date');
+        if (error) { container.innerHTML = '<p class="small">Erro ao carregar conferência: ' + error.message + '</p>'; return; }
+        const rows = (data || []).filter(order => String(order.opeixeiro_units?.code || '').toUpperCase() === String(state.unit || '').toUpperCase());
+        container.innerHTML = rows.map(order => {
+          const releases = order.opeixeiro_dispatch_releases || [];
+          const driver = [...new Set(releases.map(release => release.driver_name).filter(Boolean))].join(', ') || 'Ainda não liberado';
+          const situation = order.status === 'delivered' ? 'Entrega concluída' : releases.some(release => release.status === 'scanned') ? 'Coleta em andamento' : releases.some(release => release.status === 'released') ? 'Aguardando motorista ler o QR' : 'Aguardando despacho';
+          const products = (order.opeixeiro_order_items || []).map(item => `${item.opeixeiro_products?.canonical_name || 'Produto'} ${item.requested_qty} ${item.unit}${Number(item.mandatory_carryover_qty) ? ` (mínimo obrigatório ${item.mandatory_carryover_qty})` : ''}`).join(', ');
+          return `<div class="card" style="cursor:default"><div class="text"><strong>Entrega ${order.opeixeiro_units?.name || state.unit} · ${order.delivery_date}</strong><span>${situation}</span><span>Motorista: ${driver}</span><span>Itens: ${products}</span></div></div>`;
+        }).join('') || `<p class="small">Nenhuma conferência pendente para ${state.unit}.</p>`;
+      }
+
+      async function loadDispatchOrders() {
+        if (state.dispatchWatchTimer) clearInterval(state.dispatchWatchTimer);
+        state.dispatchWatchTimer = null;
+        const container = document.getElementById('dispatchOrders');
+        container.innerHTML = '<p class="small">Carregando pedidos de hoje...</p>';
+        const [{ data, error }, { data: drivers, error: driversError }] = await Promise.all([
+          dispatchDb.from('opeixeiro_orders').select('id, delivery_date, status, updated_at, checker_name, opeixeiro_profiles!inner(display_name), opeixeiro_order_items(requested_qty,mandatory_carryover_qty,unit,opeixeiro_products(canonical_name),opeixeiro_order_item_pickups(origin_unit_id,planned_qty,checker_name,opeixeiro_units(name,code))), opeixeiro_dispatch_releases(origin_unit_id,driver_name,status,scanned_at,created_at), opeixeiro_delivery_receipts(scanned_by_driver,status,scanned_at), opeixeiro_operational_events(event_type,actor_name,client_occurred_at,metadata)').in('status', ['submitted','scheduled_next_day','delivered']).order('delivery_date'),
+          dispatchDb.from('opeixeiro_drivers').select('display_name').eq('active', true).order('display_name')
+        ]);
+        if (error) { container.innerHTML = '<p class="small">Erro ao carregar despacho: ' + error.message + '</p>'; return; }
+        if (driversError) { container.innerHTML = '<p class="small">Erro ao carregar motoristas: ' + driversError.message + '</p>'; return; }
+        const driverNames = (drivers || []).map(driver => driver.display_name);
+        const canDispatchOrigin = (originCode) => {
+          const unit = (state.unit || '').toUpperCase();
+          const origin = (originCode || '').toUpperCase();
+          if (unit === origin) return true;
+          if (unit === 'PEIXARIA_BEBIDAS' && origin === 'ESTOQUE_BEBIDAS') return true;
+          if (unit === 'PEIXARIA_COMIDA' && origin === 'ESTOQUE_COMIDAS') return true;
+          return false;
+        };
+        const pendingOrders = (data || []).filter(order => order.status !== 'delivered');
+        const completedOrders = (data || []).filter(order => order.status === 'delivered');
+        container.innerHTML = pendingOrders.map(order => {
+          const groups = new Map();
+          order.opeixeiro_order_items.forEach(item => (item.opeixeiro_order_item_pickups || []).forEach(pickup => {
+            const key = pickup.origin_unit_id;
+            if (!groups.has(key)) groups.set(key, { name: pickup.opeixeiro_units.name, code: pickup.opeixeiro_units.code, checker: pickup.checker_name || order.checker_name || 'A definir', items: [] });
+            groups.get(key).items.push({ name: item.opeixeiro_products.canonical_name, qty: pickup.planned_qty, mandatory: Number(item.mandatory_carryover_qty) || 0, unit: item.unit });
+          }));
+          return `<div class="card" data-pending-order><div class="text"><strong>Pedido: ${order.opeixeiro_profiles.display_name}</strong><span>Data: ${order.delivery_date} • ${groups.size} ponto(s) de coleta</span>${groups.size ? [...groups.entries()].map(([originId, group]) => { const allowed = canDispatchOrigin(group.code); const groupKey = `${order.id}:${originId}`; const previousRelease = (order.opeixeiro_dispatch_releases || []).find(release => release.origin_unit_id === originId && ['released','scanned'].includes(release.status)); const releaseStatus = previousRelease ? `<span style="color:var(--accent)">QR ${previousRelease.status === 'scanned' ? 'já coletado' : 'já liberado'} para ${previousRelease.driver_name}.</span>` : ''; return `<div class="dispatch-group" data-dispatch-group="${groupKey}" data-origin-name="${group.name}" data-dispatch-allowed="${allowed}" style="margin-top:10px"><strong>${group.name}</strong><span>Conferente: ${group.checker}</span>${previousRelease ? releaseStatus : allowed ? `<div class="dispatch-items">${group.items.map((item, itemIndex) => `<div class="collection-item"><span>${item.name}${item.mandatory ? ` <small style="color:var(--warning)">mínimo obrigatório: ${item.mandatory} ${item.unit}</small>` : ''}</span><button class="mini-action" data-dispatch-minus="${itemIndex}">−</button><input class="qty-box" data-dispatch-qty data-minimum="${item.mandatory}" data-product="${item.name}" data-unit="${item.unit}" value="${item.qty}" readonly><span>${item.unit}</span><button class="mini-action" data-dispatch-remove="${itemIndex}">Remover</button></div>`).join('')}</div><span class="small">Itens com mínimo obrigatório vieram de falta anterior e não podem ser diminuídos abaixo desse valor.</span><input data-driver="${groupKey}" list="dispatchDrivers" placeholder="Motorista cadastrado" style="margin-top:6px"><button class="mini-action" data-release="${groupKey}" data-checker="${group.checker}">Liberar e gerar QR</button>` : `<span style="color: var(--warning);">Somente ${group.name} pode liberar esta coleta.</span>`}</div>`; }).join('') : '<span style="color: var(--danger);">Pedido sem ponto de coleta. Corrija a origem antes de liberar QR.</span>'}</div></div>`;
+        }).join('') || '<p class="small">Nenhum pedido pendente para despacho.</p>';
+        const applyMyPendingFilter = (onlyMine) => {
+          container.querySelectorAll('[data-pending-order]').forEach(card => {
+            let visibleGroups = 0;
+            card.querySelectorAll('[data-dispatch-group]').forEach(group => {
+              const visible = !onlyMine || group.dataset.dispatchAllowed === 'true';
+              group.style.display = visible ? '' : 'none';
+              if (visible) visibleGroups += 1;
+            });
+            card.style.display = visibleGroups ? '' : 'none';
+          });
+          const emptyId = 'myPendingEmpty';
+          document.getElementById(emptyId)?.remove();
+          if (onlyMine && ![...container.querySelectorAll('[data-pending-order]')].some(card => card.style.display !== 'none')) {
+            container.insertAdjacentHTML('beforeend', `<p id="${emptyId}" class="small">Nenhum pedido pendente para a unidade ${state.unit || 'deste perfil'}.</p>`);
+          }
+        };
+        const renderCompleted = () => {
+          const period = document.getElementById('completedDispatchPeriod').value;
+          const exactDate = document.getElementById('completedDispatchDate').value;
+          const now = new Date(); now.setHours(0,0,0,0);
+          const start = new Date(now);
+          if (period === 'one') start.setDate(start.getDate() - 1);
+          if (period === 'three') start.setDate(start.getDate() - 3);
+          if (period === 'week') start.setDate(start.getDate() - 7);
+          const rows = completedOrders.filter(order => {
+            const date = new Date(order.updated_at);
+            if (exactDate) return order.delivery_date === exactDate;
+            return period === 'all' || date >= start;
+          });
+          document.getElementById('completedDispatchOrders').innerHTML = rows.map(order => {
+            const pickupDrivers = (order.opeixeiro_dispatch_releases || []).filter(r => r.status === 'scanned').map(r => `${r.driver_name} (coletou ${r.scanned_at ? new Date(r.scanned_at).toLocaleString('pt-BR') : ''})`).join(' · ') || 'Não registrado';
+            const deliveryDrivers = [...new Set((order.opeixeiro_delivery_receipts || []).filter(r => r.status === 'scanned').map(r => r.scanned_by_driver).filter(Boolean))].join(', ') || pickupDrivers;
+            const items = order.opeixeiro_order_items.map(item => `${item.opeixeiro_products.canonical_name} ${item.requested_qty} ${item.unit}`).join(', ');
+            const shortages = (order.opeixeiro_operational_events || []).filter(event => event.event_type === 'delivery_shortage_reported').flatMap(event => (event.metadata?.missing || []).map(item => ({ ...item, reporter: event.actor_name, when: event.client_occurred_at })));
+            const shortageText = shortages.length ? `<span style="color:var(--warning)"><strong>Faltas relatadas no recebimento:</strong> ${shortages.map(item => `${item.name}: faltou ${item.missing_qty} ${item.unit || ''} (conferente ${item.reporter || 'não informado'} · ${item.when ? new Date(item.when).toLocaleString('pt-BR') : ''})`).join(' · ')}</span>` : '<span>Faltas relatadas: nenhuma.</span>';
+            return `<div class="card"><div class="text"><strong>Concluído: ${order.opeixeiro_profiles.display_name} · ${order.delivery_date}</strong><span>Produtos: ${items}</span>${shortageText}<span>Motorista que coletou: ${pickupDrivers}</span><span>Motorista que entregou: ${deliveryDrivers}</span><span>Status: Entrega concluída em ${new Date(order.updated_at).toLocaleString('pt-BR')}</span></div></div>`;
+          }).join('') || '<p class="small">Nenhum despacho concluído neste período.</p>';
+        };
+        renderCompleted();
+        document.getElementById('refreshCompletedDispatch').onclick = renderCompleted;
+        document.querySelectorAll('.dispatch-view').forEach(viewButton => viewButton.onclick = () => {
+          document.querySelectorAll('.dispatch-view').forEach(button => button.classList.toggle('active', button === viewButton));
+          const view = viewButton.dataset.dispatchView;
+          const completed = view === 'completed';
+          container.style.display = completed ? 'none' : 'grid';
+          if (!completed) applyMyPendingFilter(view === 'mine');
+          document.getElementById('completedDispatchOrders').style.display = completed ? 'grid' : 'none';
+          document.getElementById('completedDispatchFilters').style.display = completed ? 'flex' : 'none';
+          document.getElementById('dispatchQrList').style.display = completed ? 'none' : 'grid';
+          if (completed) renderCompleted();
+        });
+        container.insertAdjacentHTML('afterbegin', `<datalist id="dispatchDrivers">${driverNames.map(name => `<option value="${name}"></option>`).join('')}</datalist>`);
+        container.querySelectorAll('[data-dispatch-minus]').forEach(button => button.addEventListener('click', () => {
+          const input = button.parentElement.querySelector('[data-dispatch-qty]');
+          input.value = Math.max(Number(input.dataset.minimum) || 0, Number(input.value) - 1);
+        }));
+        container.querySelectorAll('[data-dispatch-remove]').forEach(button => button.addEventListener('click', () => {
+          const input = button.parentElement.querySelector('[data-dispatch-qty]');
+          const minimum = Number(input.dataset.minimum) || 0;
+          input.value = minimum;
+          if (minimum) alert('Este item possui reposição obrigatória de falta anterior e não pode ser removido.'); else button.parentElement.style.opacity = '0.55';
+        }));
+        container.querySelectorAll('[data-release]').forEach(button => button.addEventListener('click', async () => {
+          const [orderId, originId] = button.dataset.release.split(':');
+          const driver = container.querySelector(`[data-driver="${orderId}:${originId}"]`).value.trim();
+          if (!driver) { alert('Informe o motorista que chegou ao local.'); return; }
+          const registeredDriver = driverNames.find(name => name.trim().toLocaleLowerCase() === driver.toLocaleLowerCase());
+          if (!registeredDriver) { alert('Escolha um motorista já cadastrado. O QR só poderá ser lido pelo mesmo nome usado no app do motorista.'); return; }
+          const groupElement = button.closest('[data-dispatch-group]');
+          const items = [...groupElement.querySelectorAll('[data-dispatch-qty]')].map(input => ({ name: input.dataset.product, qty: Number(input.value), unit: input.dataset.unit })).filter(item => item.qty > 0);
+          if (!items.length) { alert('Mantenha pelo menos um item para gerar este QR de coleta.'); return; }
+          button.disabled = true;
+          button.textContent = 'Gerando QR...';
+          const { data: release, error: releaseError } = await dispatchDb.from('opeixeiro_dispatch_releases').insert({ order_id: orderId, origin_unit_id: originId, driver_name: registeredDriver, checker_name: button.dataset.checker, items }).select('release_token,order_id,origin_unit_id,driver_name,checker_name,items').single();
+          if (releaseError) { button.disabled = false; button.textContent = 'Liberar e gerar QR'; document.getElementById('dispatchQrList').innerHTML = '<p class="small">Não foi possível liberar: ' + releaseError.message + '</p>'; return; }
+          await dispatchDb.from('opeixeiro_operational_events').insert({ order_id: release.order_id, event_type: 'dispatch_released', actor_name: state.profile, client_occurred_at: new Date().toISOString(), device_user_agent: navigator.userAgent, device_platform: navigator.platform, device_language: navigator.language, screen_size: `${screen.width}x${screen.height}`, network_hint: navigator.connection?.effectiveType || null, metadata: { origin_unit_id: release.origin_unit_id, driver_name: release.driver_name, checker_name: release.checker_name } });
+          try {
+            const qrPayload = JSON.stringify({ type: 'opeixeiro_dispatch_release', release_token: release.release_token, order_id: release.order_id, origin_unit_id: release.origin_unit_id });
+            const qr = qrcode(0, 'L'); qr.addData(qrPayload); qr.make();
+            const image = document.createElement('img');
+            image.src = qr.createDataURL(7, 0);
+            image.alt = 'QR de liberação para ' + release.driver_name;
+            const qrCard = document.createElement('div');
+            qrCard.className = 'card';
+            qrCard.dataset.releaseToken = release.release_token;
+            qrCard.innerHTML = `<div class="text"><strong>QR de coleta: ${groupElement.dataset.originName || 'Ponto de coleta'}</strong><span>Motorista: ${release.driver_name} • Conferente: ${release.checker_name}</span><span>Itens: ${release.items.map(item => item.name + ' ' + item.qty + ' ' + item.unit).join(', ')}</span><span>Token: ${release.release_token}</span><strong data-release-status style="color: var(--warning); margin-top: 8px;">Aguardando leitura do motorista…</strong></div>`;
+            const qrBox = document.createElement('div'); qrBox.className = 'qr-box'; qrBox.appendChild(image); qrCard.appendChild(qrBox);
+            const list = document.getElementById('dispatchQrList');
+            if (list.querySelector('.small')) list.innerHTML = '';
+            list.appendChild(qrCard);
+            watchDispatchRelease(qrCard, release.release_token);
+            button.textContent = 'QR gerado';
+          } catch (qrError) {
+            button.disabled = false;
+            button.textContent = 'Liberar e gerar QR';
+            const list = document.getElementById('dispatchQrList');
+            list.innerHTML = '<p class="small">Falha ao gerar QR: ' + qrError.message + '</p>';
+          }
+        }));
+      }
+
+      async function watchDispatchRelease(card, releaseToken) {
+        const status = card.querySelector('[data-release-status]');
+        const refresh = async () => {
+          const { data, error } = await dispatchDb.from('opeixeiro_dispatch_releases')
+            .select('status,scanned_at,driver_name')
+            .eq('release_token', releaseToken)
+            .maybeSingle();
+          if (error || !data || !status) return;
+          if (data.status === 'scanned') {
+            const when = data.scanned_at ? new Date(data.scanned_at).toLocaleString('pt-BR') : 'agora';
+            status.style.color = 'var(--primary-2)';
+            status.textContent = `Você já conferiu este pedido. Coleta feita por ${data.driver_name} em ${when}.`;
+          } else if (data.status === 'cancelled') {
+            status.style.color = 'var(--danger)';
+            status.textContent = 'Esta liberação foi cancelada.';
+          }
+        };
+        await refresh();
+        if (state.dispatchWatchTimer) clearInterval(state.dispatchWatchTimer);
+        state.dispatchWatchTimer = setInterval(() => {
+          document.querySelectorAll('[data-release-token]').forEach(qrCard => refreshDispatchCard(qrCard));
+        }, 8000);
+      }
+
+      async function refreshDispatchCard(card) {
+        const releaseToken = card.dataset.releaseToken;
+        const status = card.querySelector('[data-release-status]');
+        const { data, error } = await dispatchDb.from('opeixeiro_dispatch_releases')
+          .select('status,scanned_at,driver_name').eq('release_token', releaseToken).maybeSingle();
+        if (error || !data || !status) return;
+        if (data.status === 'scanned') {
+          status.style.color = 'var(--primary-2)';
+          status.textContent = `Você já conferiu este pedido. Coleta feita por ${data.driver_name} em ${new Date(data.scanned_at).toLocaleString('pt-BR')}.`;
+        }
+        if (data.status === 'cancelled') {
+          status.style.color = 'var(--danger)';
+          status.textContent = 'Esta liberação foi cancelada.';
+        }
+      }
+
+      async function loadReceiptOrders() {
+        const container = document.getElementById('receiptOrders');
+        container.innerHTML = '<p class="small">Carregando entregas...</p>';
+        // Nunca mantenha QR do perfil anterior na tela: cada QR é exclusivo da entrega/unidade.
+        document.getElementById('receiptQrList').innerHTML = '';
+        const { data, error } = await dispatchDb.from('opeixeiro_orders').select('id,delivery_date,opeixeiro_units!opeixeiro_orders_destination_unit_id_fkey(name,code),opeixeiro_order_contributions(requester_name,items),opeixeiro_delivery_receipts(requester_name,status),opeixeiro_dispatch_releases(origin_unit_id,status,driver_name)').in('status', ['submitted','scheduled_next_day']).order('delivery_date');
+        if (error) { container.innerHTML = '<p class="small">Erro ao carregar recebimentos: ' + error.message + '</p>'; return; }
+        const destinationCode = String(state.unit || '').trim().toUpperCase();
+        const destinationOrders = (data || []).filter(order => String(order.opeixeiro_units?.code || '').trim().toUpperCase() === destinationCode);
+        container.innerHTML = destinationOrders.map(order => {
+          const releases = order.opeixeiro_dispatch_releases || [];
+          const allCollected = releases.length > 0 && releases.every(release => release.status === 'scanned');
+          const pickupNote = allCollected
+            ? `Coleta confirmada${releases.some(release => release.driver_name) ? ' pelo motorista ' + releases.map(release => release.driver_name).filter(Boolean).join(', ') : ''}. Confira o que chegou antes de gerar o QR.`
+            : 'Aguardando todas as coletas serem confirmadas pelo motorista. O QR de recebimento só será liberado depois disso.';
+          return `<div class="card" style="align-items:flex-start;cursor:default"><div class="text"><strong>Entrega para ${order.opeixeiro_units?.name || 'Destino'}</strong><span>Data: ${order.delivery_date} • ${pickupNote}</span>${(order.opeixeiro_order_contributions || []).slice(0,2).map(c => `<div class="receipt-contribution" data-receipt-group data-order-id="${order.id}" data-receiver="${c.requester_name}"><strong>${c.requester_name}</strong><span class="small">Diminua somente o que faltou no caminho. A falta ficará registrada.</span><div class="receipt-items">${(c.items || []).map(i => `<span class="receipt-item"><span>${i.name}</span><button type="button" class="mini-action" data-receipt-minus ${allCollected ? '' : 'disabled'}>−</button><input data-receipt-qty data-name="${i.name}" data-unit="${i.unit || ''}" data-expected="${i.qty}" value="${i.qty}" readonly><span>${i.unit || ''}</span></span>`).join('')}</div><button class="mini-action" data-receipt-generate ${allCollected ? '' : 'disabled'}>${allCollected ? 'Gerar QR de recebimento' : 'Aguardando coleta'}</button></div>`).join('')}</div></div>`;
+        }).join('') || `<p class="small">Nenhuma entrega pendente para receber em ${state.unit || 'sua unidade'}.</p>`;
+        container.querySelectorAll('[data-receipt-minus]').forEach(button => button.addEventListener('click', () => {
+          const input = button.parentElement.querySelector('[data-receipt-qty]');
+          input.value = Math.max(0, Number(input.value) - 1);
+        }));
+        container.querySelectorAll('[data-receipt-generate]').forEach(button => button.addEventListener('click', async () => {
+          const group = button.closest('[data-receipt-group]');
+          const items = [...group.querySelectorAll('[data-receipt-qty]')].map(input => ({ name: input.dataset.name, unit: input.dataset.unit, expected_qty: Number(input.dataset.expected), qty: Number(input.value) })).filter(item => item.expected_qty > 0);
+          const missing = items.filter(item => item.qty < item.expected_qty).map(item => ({ name: item.name, unit: item.unit, expected_qty: item.expected_qty, missing_qty: item.expected_qty - item.qty }));
+          const { data: receipt, error: receiptError } = await dispatchDb.from('opeixeiro_delivery_receipts').upsert({ order_id: group.dataset.orderId, requester_name: group.dataset.receiver, items, status: 'issued' }, { onConflict: 'order_id,requester_name' }).select('id,receipt_token,order_id,requester_name,items').single();
+          if (receiptError) { alert('Não foi possível gerar o QR: ' + receiptError.message); return; }
+          if (missing.length) await dispatchDb.from('opeixeiro_operational_events').insert({ order_id: receipt.order_id, receipt_id: receipt.id, event_type: 'delivery_shortage_reported', actor_name: state.profile, client_occurred_at: new Date().toISOString(), device_user_agent: navigator.userAgent, metadata: { requester_name: receipt.requester_name, missing } });
+          // QR propositalmente curto: os itens ficam no Supabase, não dentro da imagem.
+          // Assim continua legível mesmo em pedidos grandes.
+          const payload = JSON.stringify({ type: 'opeixeiro_delivery_receipt', order_id: receipt.order_id, receipt_token: receipt.receipt_token });
+          const qr = qrcode(0, 'M'); qr.addData(payload); qr.make();
+          const qrCard = document.createElement('div'); qrCard.className = 'card';
+          qrCard.innerHTML = `<div class="text"><strong>QR de recebimento: ${receipt.requester_name}</strong><span>${missing.length ? `Falta registrada: ${missing.map(item => item.name + ' ' + item.missing_qty + ' ' + item.unit).join(', ')}.` : 'Todos os itens foram conferidos.'}</span><span>Mostre este QR ao motorista para confirmar somente estes itens.</span><div class="qr-box"><div>${qr.createImgTag(6, 0, 'QR de recebimento')}</div></div></div>`;
+          document.getElementById('receiptQrList').appendChild(qrCard);
+        }));
+      }
+
+      document.getElementById('panelEnterBtn').addEventListener('click', enterPanel);
+      document.getElementById('panelRefreshBtn').addEventListener('click', loadPanelProfiles);
+      document.getElementById('panelCreateBtn').addEventListener('click', () => { document.getElementById('panelCreateBox').style.display = 'block'; document.getElementById('panelNewName').focus(); });
+      document.getElementById('panelSaveNewBtn').addEventListener('click', createPanelProfile);
+
+      document.querySelectorAll('.unit-button').forEach(button => {
+        button.addEventListener('click', () => {
+          state.unit = button.dataset.unit;
+          openDashboard();
+        });
+      });
+
+      document.getElementById('btnTrocar').addEventListener('click', () => {
+        showStep('step-profile');
+      });
+
+      document.getElementById('searchInput').addEventListener('input', renderCatalog);
+
+      document.getElementById('resetPedido').addEventListener('click', () => {
+        clearCategory('todos');
+      });
+
+      document.getElementById('clearBebidasBtn').addEventListener('click', () => {
+        clearCategory('bebidas');
+      });
+
+      document.getElementById('clearAlimentosBtn').addEventListener('click', () => {
+        clearCategory('alimentos');
+      });
+
+      document.getElementById('generateQrBtn').addEventListener('click', generateQr);
+      document.getElementById('addCustomProductBtn').addEventListener('click', addCustomProduct);
+      document.getElementById('toggleVoiceAssistantBtn').addEventListener('click', () => {
+        setVoiceAssistant(localStorage.getItem('opeixeiro_voice_assistant_enabled') !== 'true');
+      });
+      document.getElementById('readCurrentScreenBtn').addEventListener('click', readCurrentScreen);
+      document.getElementById('stopReadingBtn').addEventListener('click', () => {
+        window.speechSynthesis?.cancel();
+        document.getElementById('voiceAssistantStatus').textContent = 'Leitura interrompida.';
+      });
+
+      document.querySelectorAll('.tab-button').forEach(button => {
+        button.addEventListener('click', () => {
+          document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+          document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
+          button.classList.add('active');
+          document.getElementById('tab-' + button.dataset.tab).classList.add('active');
+          if (button.dataset.tab === 'despacho') loadDispatchOrders();
+          if (button.dataset.tab === 'conferencia') loadConference();
+          if (button.dataset.tab === 'recebimento') loadReceiptOrders();
+          if (button.dataset.tab === 'origens') loadOriginCorrections();
+        });
+      });
+
+      buildCatalog();
+      setVoiceAssistant(localStorage.getItem('opeixeiro_voice_assistant_enabled') === 'true');
+      loadPanelProfiles();
+      showStep('step-profile');
+    </script>
+  </body>
+</html>

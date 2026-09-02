@@ -1,0 +1,77 @@
+plugins {
+    id 'com.android.application'
+}
+
+def cfg = new Properties()
+def cfgFile = rootProject.file('../supabase.properties')
+if (cfgFile.exists()) {
+    cfgFile.withInputStream { cfg.load(it) }
+}
+
+android {
+    namespace 'br.com.opeixeiro.motorista'
+    compileSdk 36
+
+    signingConfigs {
+        release {
+            def ks = rootProject.file('keystore.properties')
+            if (ks.exists()) {
+                def props = new Properties()
+                ks.withInputStream { props.load(it) }
+                storeFile rootProject.file(props.getProperty('storeFile', ''))
+                storePassword props.getProperty('storePassword', '')
+                keyAlias props.getProperty('keyAlias', '')
+                keyPassword props.getProperty('keyPassword', '')
+            }
+        }
+    }
+
+    defaultConfig {
+        applicationId 'br.com.opeixeiro.motorista'
+        minSdk 23
+        targetSdk 36
+        versionCode 24
+        versionName '1.4.1'
+
+        buildConfigField 'String', 'SUPABASE_URL', '"' + (cfg.getProperty('SUPABASE_URL', '')).replace('"', '\\"') + '"'
+        buildConfigField 'String', 'SUPABASE_ANON_KEY', '"' + (cfg.getProperty('SUPABASE_ANON_KEY', '')).replace('"', '\\"') + '"'
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    // Detecção facial local via Google Play Services; o modelo é baixado no aparelho.
+    implementation 'com.google.android.gms:play-services-mlkit-face-detection:17.1.0'
+    implementation 'androidx.camera:camera-core:1.5.1'
+    implementation 'androidx.camera:camera-camera2:1.5.1'
+    implementation 'androidx.camera:camera-lifecycle:1.5.1'
+    implementation 'androidx.camera:camera-view:1.5.1'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'com.google.android.material:material:1.12.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'androidx.work:work-runtime:2.9.1'
+    
+    // ZXing - QR Code scanner/decoder
+    implementation 'com.google.zxing:core:3.5.1'
+    implementation 'com.journeyapps:zxing-android-embedded:4.3.0'
+    implementation 'com.google.code.gson:gson:2.10.1'
+}
+
+
+
+

@@ -1,0 +1,1223 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>O Peixeiro - Motorista</title>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.5.2/qrcode.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <style>
+      :root {
+        --bg: #07131b;
+        --bg-2: #0b1d25;
+        --panel: #0f2129;
+        --panel-2: #102b35;
+        --card: #1a2a33;
+        --card-strong: #1f5f66;
+        --primary: #2b8277;
+        --primary-2: #238f84;
+        --accent: #7bd7d4;
+        --text: #f2f7f7;
+        --muted: #bfd2d6;
+        --warning: #ffd75c;
+        --danger: #ff6b6b;
+        --line: rgba(123, 215, 212, 0.2);
+      }
+
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        min-height: 100%;
+        font-family: Arial, Helvetica, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      body {
+        padding: 18px;
+      }
+
+      button, input, select, textarea {
+        font: inherit;
+      }
+
+      .app-shell {
+        max-width: 980px;
+        margin: 0 auto;
+      }
+
+      .header {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 22px 20px;
+        margin-bottom: 18px;
+      }
+
+      .brand-row {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 8px;
+      }
+
+      .brand-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 16px;
+        object-fit: cover;
+        border: 2px solid rgba(123, 215, 212, 0.4);
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(2rem, 4vw, 2.7rem);
+      }
+
+      .subtitle {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .screen {
+        display: none;
+      }
+
+      .screen.active {
+        display: block;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 18px;
+        margin-bottom: 18px;
+      }
+
+      .grid {
+        display: grid;
+        gap: 14px;
+      }
+
+      .field {
+        display: grid;
+        gap: 8px;
+      }
+
+      label {
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+
+      input, select, textarea {
+        width: 100%;
+        background: #123b43;
+        color: var(--text);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px 14px;
+      }
+
+      textarea {
+        min-height: 96px;
+        resize: vertical;
+      }
+
+      .row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      button {
+        border: none;
+        border-radius: 12px;
+        padding: 12px 18px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: transform 0.1s ease;
+      }
+
+      button:hover {
+        transform: translateY(-1px);
+      }
+
+      .primary {
+        background: var(--primary);
+        color: #fff;
+      }
+
+      .secondary {
+        background: #18333d;
+        color: var(--text);
+        border: 1px solid var(--line);
+      }
+
+      .danger {
+        background: rgba(255, 107, 107, 0.14);
+        border: 1px solid rgba(255, 107, 107, 0.4);
+        color: #ffdfe0;
+      }
+
+      .order-list {
+        display: grid;
+        gap: 10px;
+        margin-top: 12px;
+      }
+
+      .order-card {
+        background: rgba(19, 56, 66, 0.8);
+        border: 1px solid rgba(123, 215, 212, 0.14);
+        border-radius: 12px;
+        padding: 14px 12px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+
+      .order-card:hover {
+        border-color: rgba(123, 215, 212, 0.45);
+        transform: translateY(-1px);
+      }
+
+      .order-card strong {
+        display: block;
+        color: var(--accent);
+        margin-bottom: 4px;
+      }
+
+      .order-card .meta {
+        font-size: 0.82rem;
+        color: var(--muted);
+      }
+
+      .stop-list {
+        display: grid;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .stop-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 14px;
+        border-radius: 12px;
+        background: rgba(19, 56, 66, 0.8);
+        border: 1px solid rgba(123, 215, 212, 0.14);
+      }
+
+      .stop-item strong {
+        display: block;
+        color: var(--accent);
+        margin-bottom: 2px;
+      }
+
+      .stop-item .meta {
+        color: var(--muted);
+        font-size: 0.82rem;
+      }
+
+      .checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 14px;
+        background: rgba(255, 215, 92, 0.08);
+        border: 1px solid rgba(255, 215, 92, 0.18);
+        border-radius: 12px;
+      }
+
+      .checkbox-group input[type="checkbox"] {
+        width: auto;
+        margin: 0;
+      }
+
+      .collection-item { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+      .collection-item .qty-box { width: 70px; text-align: center; }
+      .collection-item button { padding: 7px 11px; }
+      .scanner-modal { position: fixed; inset: 0; display: none; place-items: center; padding: 18px; background: rgba(0,0,0,.78); z-index: 20; }
+      .scanner-modal.active { display: grid; }
+      .scanner-card { width: min(520px, 100%); background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
+      #scannerVideo { width: 100%; border-radius: 12px; background: #000; }
+      #scannerReader { width: 100%; border-radius: 12px; overflow: hidden; background: #000; }
+
+      .status {
+        margin-top: 12px;
+        padding: 12px 14px;
+        border-radius: 12px;
+        background: rgba(255, 215, 92, 0.08);
+        border: 1px solid rgba(255, 215, 92, 0.18);
+        color: var(--warning);
+        display: none;
+      }
+
+      .status.visible {
+        display: block;
+      }
+
+      .qr-box {
+        display: grid;
+        place-items: center;
+        background: #fff;
+        border-radius: 18px;
+        padding: 20px;
+        margin-bottom: 12px;
+      }
+
+      #qrCanvas {
+        width: min(280px, 80vw);
+        height: auto;
+      }
+
+      .summary {
+        background: rgba(19, 56, 66, 0.8);
+        border: 1px solid rgba(123, 215, 212, 0.12);
+        border-radius: 12px;
+        padding: 12px 14px;
+        color: var(--text);
+      }
+
+      .summary strong {
+        color: var(--accent);
+      }
+
+      .summary p {
+        margin: 8px 0;
+        font-size: 0.9rem;
+      }
+
+      .product-list {
+        margin-top: 12px;
+        padding: 0;
+        list-style: none;
+      }
+
+      .product-item {
+        padding: 8px 12px;
+        background: rgba(0, 0, 0, 0.2);
+        margin-bottom: 4px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+      }
+
+      .small {
+        font-size: 0.82rem;
+        color: var(--muted);
+      }
+
+      .spinner {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border: 2px solid rgba(123, 215, 212, 0.3);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: spin 0.6s linear infinite;
+      }
+
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+
+      @media (max-width: 640px) {
+        body {
+          padding: 12px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="header">
+        <div class="brand-row">
+          <img class="brand-icon" src="https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=200&q=80" alt="O Peixeiro" />
+          <div>
+            <h1>O Peixeiro</h1>
+            <p class="subtitle">Motorista · coleta e entrega consolidada</p>
+          </div>
+        </div>
+      </header>
+
+      <section id="screen-auth" class="screen active">
+        <div class="panel">
+          <h2>Primeiro acesso</h2>
+          <p class="small">Necessário ter internet na primeira tela para validar motoristas já cadastrados no Supabase.</p>
+          <div class="grid" style="margin-top: 18px;">
+            <div class="field">
+              <label for="existingDrivers">Motorista já cadastrado</label>
+              <select id="existingDrivers">
+                <option value="">Carregando motoristas...</option>
+              </select>
+            </div>
+
+            <div class="field" id="driverPasswordField" style="display:none">
+              <label for="driverPassword">Senha</label>
+              <input id="driverPassword" type="password" autocomplete="current-password" placeholder="Informe sua senha" />
+            </div>
+
+            <div class="row">
+              <button id="connectDriverBtn" class="primary">Entrar no sistema</button>
+              <button id="refreshDriversBtn" class="secondary">Atualizar usuários</button>
+              <button id="createDriverBtn" class="secondary">Criar perfil de motorista</button>
+            </div>
+
+            <div class="field" id="createDriverBox" style="display:none"><label for="newDriverName">Nome do novo motorista</label><div class="row"><input id="newDriverName" placeholder="Digite somente o nome" /><button id="saveDriverBtn" class="secondary">Salvar perfil</button></div></div>
+
+            <div id="authStatus" class="status"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="screen-orders" class="screen">
+        <div class="panel">
+          <h2>Pedidos disponíveis</h2>
+          <p class="small" id="ordersSubtitle">Carregando pedidos...</p>
+
+          <div class="grid" style="margin:16px 0">
+            <button id="scanDispatchBtn" class="primary">Escanear despacho / coleta</button>
+            <button id="scanDeliveryStandaloneBtn" class="secondary">Escanear entrega conferida</button>
+          </div>
+          <button id="openInternalPurchaseBtn" class="secondary" style="width:100%;margin-bottom:12px">Relação de pedidos internos / compra autorizada</button>
+          <p class="small">Use estes leitores também quando o QR estiver em outro aparelho. O app identifica o pedido pelo próprio QR. Motorista logado: <strong id="scannerDriverName">--</strong></p>
+          <button id="pendingDeliveryBanner" class="status" type="button" style="display:none; width:100%; text-align:left; cursor:pointer; color:var(--warning)"></button>
+          <div class="stop-item" style="margin:16px 0"><div><strong>Meu resumo de entregas</strong><div id="driverStats" class="meta">Carregando resumo...</div></div></div>
+
+          <div id="ordersList" class="order-list"></div>
+
+          <div class="row" style="margin-top: 18px;">
+            <button id="backToAuthBtn2" class="danger">Trocar motorista</button>
+          </div>
+
+          <div id="ordersStatus" class="status"></div>
+        </div>
+      </section>
+
+      <section id="screen-confirm" class="screen">
+        <div class="panel">
+          <h2>Confirmar rota de entrega</h2>
+
+          <div class="grid" style="margin-top: 18px;">
+            <div class="field">
+              <label>Solicitante do pedido</label>
+              <input id="requesterDisplay" readonly style="background: rgba(19, 56, 66, 0.5); cursor: not-allowed;" />
+            </div>
+
+            <div class="field">
+              <label>Pontos de coleta (conforme pedido)</label>
+              <div id="pickupPointsDisplay" class="stop-list"></div>
+            </div>
+
+            <div class="field">
+              <label>Local de entrega</label>
+              <input id="deliveryDisplay" readonly style="background: rgba(19, 56, 66, 0.5); cursor: not-allowed;" />
+            </div>
+
+            <div class="field">
+              <label>Produtos solicitados</label>
+              <ul id="productsDisplay" class="product-list"></ul>
+            </div>
+
+            <div id="twoStopsContainer" class="checkbox-group" style="display: none;">
+              <input type="checkbox" id="twoStopsCheckbox" />
+              <label for="twoStopsCheckbox" style="margin: 0; color: var(--text);">Exibir todas as etapas de coleta</label>
+            </div>
+
+            <div id="multiPickupDetails" class="field" style="display: none;">
+              <label>Coletas desta rota</label>
+              <div id="multiPickupStops" class="stop-list"></div>
+            </div>
+
+            <div id="deliveryActions" class="field" style="display: none;">
+              <label>Entrega no destino</label>
+              <div class="stop-item"><div><strong>Cheguei ao destino</strong><div class="meta">Escaneie um QR de cada conferente do bar/cozinha. A entrega só fecha depois das confirmações previstas.</div><div class="row" style="margin-top:10px"><button id="scanReceiptBtn" class="primary">Escanear QR de recebimento</button></div></div></div>
+            </div>
+            <button id="routeDeliveryBanner" class="status" type="button" style="display:none; width:100%; text-align:left; cursor:pointer; color:var(--warning)"></button>
+
+            <div class="row">
+              <button id="backToOrdersBtn" class="danger">Selecionar outro pedido</button>
+            </div>
+          </div>
+
+          <div id="confirmStatus" class="status"></div>
+        </div>
+      </section>
+
+      <section id="screen-internal-purchase" class="screen">
+        <div class="panel">
+          <h2>Relação de pedidos internos</h2>
+          <p class="small">Registre compra autorizada com verba de responsável ou caixa. A foto da <strong>nota fiscal</strong> é obrigatória; não fotografe comprovante da maquininha.</p>
+          <div class="grid" style="margin-top:16px">
+            <div class="field"><label>Pedido vinculado</label><select id="purchaseOrder"></select></div>
+            <div class="field"><label>Local que solicitou o abastecimento</label><select id="purchaseSupplyOrigin"></select></div>
+            <div class="field"><label>Origem da autorização</label><select id="purchaseAuthorization"><option value="responsible">Responsável</option><option value="cash">Dinheiro do caixa</option></select></div>
+            <div class="field" id="purchaseResponsibleField"><label>Responsável que autorizou</label><select id="purchaseResponsible"><option>Simone</option><option>Kotian</option></select></div>
+            <div class="field" id="purchaseCashField" style="display:none"><label>Caixa utilizado</label><select id="purchaseCashUnit"></select></div>
+            <div class="field"><label>Local da compra</label><input id="purchaseStore" placeholder="Ex.: Supermercado Shibata ou adega" /></div>
+          </div>
+          <label class="checkbox-group" style="margin:10px 0"><input id="purchaseMarket" type="checkbox"> Usar “Mercado” automaticamente</label>
+          <div class="field"><label>Itens comprados</label><div id="purchaseItems"></div><button id="addPurchaseItemBtn" class="secondary" type="button">Adicionar item</button></div>
+          <div class="row" style="margin-top:18px"><button id="confirmInternalPurchaseBtn" class="primary">Confirmar compra e tirar foto da nota fiscal</button><button id="backFromPurchaseBtn" class="danger">Voltar</button></div>
+          <div id="purchaseStatus" class="status"></div>
+        </div>
+      </section>
+
+      <div id="scannerModal" class="scanner-modal">
+        <div class="scanner-card">
+          <h2 id="scannerTitle">Escanear QR do conferente</h2>
+          <p id="scannerHelp" class="small">Aponte a câmera para o QR.</p>
+          <video id="scannerVideo" autoplay playsinline></video>
+          <div id="scannerReader" style="display:none"></div>
+          <button id="closeScannerBtn" class="danger" type="button" style="margin-top:14px">Cancelar</button>
+          <div id="scannerStatus" class="status"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <script>
+      const SUPABASE_URL = 'https://suipuquznkksgrkchqrv.supabase.co';
+      const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1aXB1cXV6bmtrc2dya2NocXJ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzNjc4NTksImV4cCI6MjA5NDk0Mzg1OX0.YF-_OfI6SC3aJvob6VB4C4qz3GXaUaAuezOg5eV1_GE';
+      const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+      const STORAGE_KEY = 'opeixeiro_motorista_state_v2';
+      let profileCreatedInVerifiedSession = false;
+
+      const state = {
+        driver: null,
+        drivers: [],
+        passwordRequired: false,
+        currentOrder: null,
+        pickupStops: [],
+        activePickupStop: null,
+        scannerStream: null,
+        html5Scanner: null,
+        nativeScannerStarted: false,
+        standaloneScan: false,
+        recipient: ''
+      };
+
+      const getLocalState = () => {
+        try {
+          const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+          Object.assign(state, saved);
+        } catch (error) {
+          console.warn('Não foi possível carregar o estado local:', error);
+        }
+      };
+
+      const saveLocalState = () => {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      };
+
+      const ui = {
+        auth: document.getElementById('screen-auth'),
+        orders: document.getElementById('screen-orders'),
+        confirm: document.getElementById('screen-confirm'),
+        internalPurchase: document.getElementById('screen-internal-purchase'),
+        authStatus: document.getElementById('authStatus'),
+        existingDrivers: document.getElementById('existingDrivers'),
+        driverPasswordField: document.getElementById('driverPasswordField'),
+        driverPassword: document.getElementById('driverPassword'),
+        createDriverBox: document.getElementById('createDriverBox'),
+        newDriverName: document.getElementById('newDriverName'),
+        ordersList: document.getElementById('ordersList'),
+        ordersSubtitle: document.getElementById('ordersSubtitle'),
+        ordersStatus: document.getElementById('ordersStatus'),
+        requesterDisplay: document.getElementById('requesterDisplay'),
+        pickupPointsDisplay: document.getElementById('pickupPointsDisplay'),
+        deliveryDisplay: document.getElementById('deliveryDisplay'),
+        productsDisplay: document.getElementById('productsDisplay'),
+        twoStopsContainer: document.getElementById('twoStopsContainer'),
+        twoStopsCheckbox: document.getElementById('twoStopsCheckbox'),
+        multiPickupDetails: document.getElementById('multiPickupDetails'),
+        multiPickupStops: document.getElementById('multiPickupStops'),
+        scannerModal: document.getElementById('scannerModal'),
+        scannerVideo: document.getElementById('scannerVideo'),
+        scannerReader: document.getElementById('scannerReader'),
+        scannerStatus: document.getElementById('scannerStatus'),
+        scannerTitle: document.getElementById('scannerTitle'),
+        scannerHelp: document.getElementById('scannerHelp'),
+        scannerDriverName: document.getElementById('scannerDriverName'),
+        pendingDeliveryBanner: document.getElementById('pendingDeliveryBanner'),
+        routeDeliveryBanner: document.getElementById('routeDeliveryBanner'),
+        driverStats: document.getElementById('driverStats'),
+        deliveryActions: document.getElementById('deliveryActions'),
+        confirmStatus: document.getElementById('confirmStatus'),
+        purchaseOrder: document.getElementById('purchaseOrder'), purchaseSupplyOrigin: document.getElementById('purchaseSupplyOrigin'), purchaseAuthorization: document.getElementById('purchaseAuthorization'), purchaseResponsibleField: document.getElementById('purchaseResponsibleField'), purchaseResponsible: document.getElementById('purchaseResponsible'), purchaseCashField: document.getElementById('purchaseCashField'), purchaseCashUnit: document.getElementById('purchaseCashUnit'), purchaseStore: document.getElementById('purchaseStore'), purchaseMarket: document.getElementById('purchaseMarket'), purchaseItems: document.getElementById('purchaseItems'), purchaseStatus: document.getElementById('purchaseStatus'),
+      };
+
+      function showScreen(screenName) {
+        ui.auth.classList.toggle('active', screenName === 'auth');
+        ui.orders.classList.toggle('active', screenName === 'orders');
+        ui.confirm.classList.toggle('active', screenName === 'confirm');
+        ui.internalPurchase.classList.toggle('active', screenName === 'internal-purchase');
+      }
+
+      function showStatus(elementId, message, tone = 'warning') {
+        const el = document.getElementById(elementId);
+        if (!el) return;
+        el.textContent = message;
+        el.classList.add('visible');
+        el.style.color = tone === 'error' ? '#ffb1b1' : tone === 'info' ? '#7bd7d4' : '#ffd75c';
+        el.style.borderColor = tone === 'error' ? 'rgba(255,107,107,0.25)' : tone === 'info' ? 'rgba(123,215,212,0.3)' : 'rgba(255,215,92,0.2)';
+      }
+
+      async function loadDriverList() {
+        ui.existingDrivers.innerHTML = '<option value="">Buscando motoristas...</option>';
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
+        try {
+          const { data, error } = await supabaseClient
+            .from('opeixeiro_drivers')
+            .select('display_name')
+            .eq('active', true)
+            .order('display_name')
+            .abortSignal(controller.signal);
+
+          if (error) throw error;
+
+          const drivers = data.map((d) => d.display_name).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+          state.drivers = drivers;
+          localStorage.setItem('opeixeiro_motoristas', JSON.stringify(drivers));
+          ui.existingDrivers.innerHTML = '<option value="">' + (drivers.length ? 'Nenhum selecionado' : 'Nenhum motorista cadastrado') + '</option>' +
+            drivers.map((driver) => `<option value="${driver}">${driver}</option>`).join('');
+          const { data: settings } = await supabaseClient.from('opeixeiro_access_settings').select('password_required').eq('id', true).maybeSingle();
+          state.passwordRequired = Boolean(settings?.password_required);
+          ui.driverPasswordField.style.display = state.passwordRequired ? 'grid' : 'none';
+          showStatus('authStatus', drivers.length ? (state.passwordRequired ? 'Motoristas carregados. Senha obrigatória.' : 'Motoristas carregados. Senha desativada por enquanto.') : 'Ainda não há motorista cadastrado. Crie o primeiro perfil.', 'info');
+        } catch (error) {
+          console.warn('Erro ao carregar motoristas:', error);
+          const cached = JSON.parse(localStorage.getItem('opeixeiro_motoristas') || '[]');
+          if (cached.length > 0) {
+            ui.existingDrivers.innerHTML = '<option value="">Nenhum selecionado</option>' +
+              cached.map((driver) => `<option value="${driver}">${driver}</option>`).join('');
+            showStatus('authStatus', 'Usando motoristas em cache (sem conexão).', 'warning');
+          } else {
+            ui.existingDrivers.innerHTML = '<option value="">Lista indisponível</option>';
+            showStatus('authStatus', 'Não foi possível consultar a lista em até 8 segundos.', 'error');
+          }
+        } finally {
+          clearTimeout(timeout);
+        }
+      }
+
+      async function connectDriver() {
+        const selected = (ui.existingDrivers.value || '').trim();
+        let resolved = selected;
+
+        if (!resolved) {
+          showStatus('authStatus', 'Selecione um motorista cadastrado ou crie outro perfil.', 'error');
+          return;
+        }
+
+        if (!navigator.onLine) {
+          showStatus('authStatus', 'Sem internet. A primeira tela precisa conectar para validar usuários no Supabase.', 'error');
+          return;
+        }
+
+        const existingDriver = state.drivers.find((name) => name.localeCompare(resolved, 'pt-BR', { sensitivity: 'accent' }) === 0);
+        if (!existingDriver) { showStatus('authStatus', 'Motorista não encontrado. Crie o perfil primeiro.', 'error'); return; }
+        resolved = existingDriver;
+        const { data: allowed, error: passwordError } = await supabaseClient.rpc('opeixeiro_verify_access', { p_kind: 'driver', p_display_name: resolved, p_password: ui.driverPassword.value || null });
+        if (passwordError || !allowed) { showStatus('authStatus', passwordError ? 'Falha ao validar senha: ' + passwordError.message : 'Senha inválida.', 'error'); return; }
+
+        state.driver = resolved;
+        saveLocalState();
+        await loadOrders();
+      }
+
+      async function createDriverProfile() {
+        if (!window.AndroidScanner || !window.AndroidScanner.isSelfieVerified || !window.AndroidScanner.isSelfieVerified()) {
+          showStatus('authStatus', 'Faça a verificação por selfie antes de criar um perfil.', 'error');
+          return;
+        }
+        if (profileCreatedInVerifiedSession) {
+          showStatus('authStatus', 'Nesta sessão verificada já foi criado um perfil. Você ainda pode entrar com qualquer perfil existente.', 'error');
+          return;
+        }
+        const name = ui.newDriverName.value.trim();
+        if (!name) { showStatus('authStatus', 'Digite o nome do novo motorista.', 'error'); return; }
+        const { data, error } = await supabaseClient.from('opeixeiro_drivers').insert({ display_name: name, active: true }).select('display_name').single();
+        if (error) { showStatus('authStatus', 'Não foi possível criar o perfil: ' + error.message, 'error'); return; }
+        ui.newDriverName.value = '';
+        profileCreatedInVerifiedSession = true;
+        window.AndroidScanner?.bindCreatedProfile?.(data.display_name);
+        ui.createDriverBox.style.display = 'none';
+        await loadDriverList();
+        ui.existingDrivers.value = data.display_name;
+        showStatus('authStatus', 'Perfil de motorista criado. Agora entre no sistema.', 'info');
+      }
+
+      async function loadOrders() {
+        showStatus('ordersStatus', '');
+        ui.ordersList.innerHTML = '<div class="small"><span class="spinner"></span> Carregando pedidos...</div>';
+        showScreen('orders');
+        ui.scannerDriverName.textContent = state.driver || '--';
+        loadDriverSummary();
+
+        try {
+          const { data, error } = await supabaseClient
+            .from('opeixeiro_orders')
+            .select(`
+              id,
+              destination_unit_id,
+              origin_unit_id,
+              requested_by,
+              delivery_date,
+              status,
+              checker_name,
+              recipient_name,
+              created_at,
+              opeixeiro_profiles!inner(display_name),
+              opeixeiro_order_items(
+                id,
+                requested_qty,
+                unit,
+                opeixeiro_products(canonical_name, category),
+                opeixeiro_order_item_pickups(origin_unit_id, planned_qty, checker_name)
+              )
+            `)
+            .in('status', ['submitted', 'scheduled_next_day'])
+            .order('delivery_date');
+
+          if (error) throw error;
+
+          if (!data || data.length === 0) {
+            ui.ordersList.innerHTML = '<div class="small">Nenhum pedido pendente de coleta.</div>';
+            ui.ordersSubtitle.textContent = 'Nenhum pedido pendente de coleta.';
+            return;
+          }
+
+          // Fetch unit names
+          const unitIds = [...new Set(data.flatMap((o) => [
+            o.destination_unit_id,
+            o.origin_unit_id,
+            ...(o.opeixeiro_order_items || []).flatMap(item => (item.opeixeiro_order_item_pickups || []).map(pickup => pickup.origin_unit_id))
+          ]).filter(Boolean))];
+          const { data: units } = await supabaseClient
+            .from('opeixeiro_units')
+            .select('id, name')
+            .in('id', unitIds);
+          const unitMap = Object.fromEntries((units || []).map((u) => [u.id, u.name]));
+
+          ui.ordersList.innerHTML = data.map((order) => {
+            const requester = order.opeixeiro_profiles.display_name;
+            const destination = unitMap[order.destination_unit_id] || 'Desconhecido';
+            const pickupOriginIds = [...new Set((order.opeixeiro_order_items || []).flatMap(item => {
+              const assignments = item.opeixeiro_order_item_pickups || [];
+              return assignments.length ? assignments.map(assignment => assignment.origin_unit_id) : [order.origin_unit_id];
+            }).filter(Boolean))];
+            const origin = pickupOriginIds.map(id => unitMap[id]).filter(Boolean).join(' + ') || 'Coleta a definir';
+            const itemCount = order.opeixeiro_order_items.length;
+
+            return `
+              <div class="order-card" data-order-id="${order.id}">
+                <strong>${requester}</strong>
+                <div class="meta">${order.delivery_date} • ${origin} → ${destination} • ${itemCount} item(ns)</div>
+              </div>
+            `;
+          }).join('');
+
+          document.querySelectorAll('.order-card').forEach((card) => {
+            card.addEventListener('click', () => {
+              const orderId = card.dataset.orderId;
+              selectOrder(data.find((o) => o.id === orderId));
+            });
+          });
+
+          ui.ordersSubtitle.textContent = `${data.length} pedido(s) pendente(s) de coleta.`;
+        } catch (error) {
+          console.error('Erro ao carregar pedidos:', error);
+          ui.ordersList.innerHTML = '<div class="small">Não foi possível carregar os pedidos.</div>';
+          ui.ordersSubtitle.textContent = 'Falha ao consultar pedidos.';
+          showStatus('ordersStatus', 'Erro ao carregar pedidos: ' + (error.message || 'desconhecido'), 'error');
+        }
+      }
+
+      async function selectOrder(order) {
+        state.currentOrder = order;
+        state.recipient = '';
+        saveLocalState();
+
+        ui.twoStopsCheckbox.checked = false;
+        ui.multiPickupDetails.style.display = 'none';
+
+        // Populate display fields
+        ui.requesterDisplay.value = order.opeixeiro_profiles.display_name;
+
+        // Fetch destination unit name
+        const { data: destUnit } = await supabaseClient
+          .from('opeixeiro_units')
+          .select('name')
+          .eq('id', order.destination_unit_id)
+          .single();
+
+        ui.deliveryDisplay.value = destUnit?.name || 'Desconhecido';
+
+        const pickupIds = new Set();
+        order.opeixeiro_order_items.forEach((item) => {
+          const assignments = item.opeixeiro_order_item_pickups || [];
+          assignments.forEach((assignment) => pickupIds.add(assignment.origin_unit_id));
+          if (!assignments.length && order.origin_unit_id) pickupIds.add(order.origin_unit_id);
+        });
+        const { data: pickupUnits } = pickupIds.size ? await supabaseClient
+          .from('opeixeiro_units').select('id, name').in('id', [...pickupIds]) : { data: [] };
+        const pickupUnitMap = Object.fromEntries((pickupUnits || []).map((unit) => [unit.id, unit.name]));
+        const stopMap = new Map();
+        order.opeixeiro_order_items.forEach((item) => {
+          const assignments = item.opeixeiro_order_item_pickups || [];
+          const effectiveAssignments = assignments.length ? assignments : [{ origin_unit_id: order.origin_unit_id, planned_qty: item.requested_qty, checker_name: order.checker_name || '' }];
+          effectiveAssignments.forEach((assignment) => {
+            const key = assignment.origin_unit_id;
+            if (!stopMap.has(key)) stopMap.set(key, { originUnitId: key, name: pickupUnitMap[key] || 'Origem não definida', checker: assignment.checker_name || '', arrived: false, collected: false, items: [] });
+            stopMap.get(key).items.push({ name: item.opeixeiro_products.canonical_name, qty: Number(assignment.planned_qty), unit: item.unit });
+          });
+        });
+        state.pickupStops = [...stopMap.values()];
+        const { data: previousReleases } = await supabaseClient.from('opeixeiro_dispatch_releases')
+          .select('origin_unit_id,driver_name,status,departed_at')
+          .eq('order_id', order.id)
+          .eq('status', 'scanned');
+        const currentDriver = String(state.driver || '').trim().toLocaleLowerCase();
+        state.pickupStops.forEach(stop => {
+          stop.collected = (previousReleases || []).some(release => release.origin_unit_id === stop.originUnitId && String(release.driver_name || '').trim().toLocaleLowerCase() === currentDriver);
+          stop.arrived = stop.collected;
+          stop.departed = (previousReleases || []).some(release => release.origin_unit_id === stop.originUnitId && String(release.driver_name || '').trim().toLocaleLowerCase() === currentDriver && Boolean(release.departed_at));
+        });
+        const primaryStop = state.pickupStops[0];
+
+        // A origem é definida no pedido e não pode ser escolhida pelo motorista.
+        ui.pickupPointsDisplay.innerHTML = `
+          <div class="stop-item">
+            <div>
+              <strong>${primaryStop?.name || 'Origem não definida'}</strong>
+              <div class="meta">Ponto de coleta (conforme pedido)</div>
+            </div>
+          </div>
+        `;
+
+        const isMultiStop = state.pickupStops.length > 1;
+        if (state.pickupStops.length > 4) {
+          showStatus('confirmStatus', 'Este pedido tem mais de quatro locais de coleta e precisa ser corrigido no despacho.', 'error');
+          return;
+        }
+
+        ui.twoStopsContainer.style.display = isMultiStop ? 'flex' : 'none';
+        ui.twoStopsCheckbox.checked = true;
+        renderMultiPickupDetails();
+        const readyForDelivery = state.pickupStops.length && state.pickupStops.every(stop => stop.collected);
+        ui.routeDeliveryBanner.style.display = readyForDelivery ? 'block' : 'none';
+        ui.routeDeliveryBanner.textContent = readyForDelivery ? `Você está com uma entrega para finalizar: ${order.opeixeiro_profiles.display_name} → ${ui.deliveryDisplay.value}. Toque aqui para escanear o QR de recebimento.` : '';
+
+        // Display products
+        ui.productsDisplay.innerHTML = order.opeixeiro_order_items
+          .map((item) => `
+            <li class="product-item">
+              ${item.opeixeiro_products.canonical_name} · ${item.requested_qty} ${item.unit}
+            </li>
+          `)
+          .join('');
+
+        showScreen('confirm');
+      }
+
+      function attachEvents() {
+        document.getElementById('connectDriverBtn').addEventListener('click', connectDriver);
+        document.getElementById('refreshDriversBtn').addEventListener('click', loadDriverList);
+        document.getElementById('createDriverBtn').addEventListener('click', () => { ui.createDriverBox.style.display = 'grid'; ui.newDriverName.focus(); });
+        document.getElementById('saveDriverBtn').addEventListener('click', createDriverProfile);
+        document.getElementById('backToAuthBtn2').addEventListener('click', () => showScreen('auth'));
+        document.getElementById('backToOrdersBtn').addEventListener('click', () => showScreen('orders'));
+        document.getElementById('scanDispatchBtn').addEventListener('click', () => openScanner('pickup', true));
+        document.getElementById('scanDeliveryStandaloneBtn').addEventListener('click', () => openScanner('delivery', true));
+        ui.pendingDeliveryBanner.addEventListener('click', openPendingDelivery);
+        ui.routeDeliveryBanner.addEventListener('click', () => openScanner('delivery'));
+
+        ui.twoStopsCheckbox.addEventListener('change', renderMultiPickupDetails);
+        document.getElementById('closeScannerBtn').addEventListener('click', closeScanner);
+        document.getElementById('scanReceiptBtn').addEventListener('click', () => openScanner('delivery'));
+        document.getElementById('openInternalPurchaseBtn').addEventListener('click', openInternalPurchase);
+        document.getElementById('backFromPurchaseBtn').addEventListener('click', () => loadOrders());
+        document.getElementById('addPurchaseItemBtn').addEventListener('click', () => addPurchaseItem());
+        ui.purchaseAuthorization.addEventListener('change', () => { const cash = ui.purchaseAuthorization.value === 'cash'; ui.purchaseCashField.style.display = cash ? 'block' : 'none'; ui.purchaseResponsibleField.style.display = cash ? 'none' : 'block'; });
+        ui.purchaseMarket.addEventListener('change', () => { ui.purchaseStore.value = ui.purchaseMarket.checked ? 'Mercado' : ''; ui.purchaseStore.readOnly = ui.purchaseMarket.checked; });
+        document.getElementById('confirmInternalPurchaseBtn').addEventListener('click', confirmInternalPurchase);
+      }
+
+      function addPurchaseItem(item = {}) {
+        const row = document.createElement('div'); row.className = 'row'; row.style.marginTop = '8px';
+        row.innerHTML = `<input data-purchase-name placeholder="Produto" value="${item.name || ''}"><input data-purchase-qty type="number" min="0.001" step="0.001" placeholder="Qtd." value="${item.qty || ''}"><select data-purchase-unit><option value="unidade">Unidade</option><option value="caixa">Caixa</option><option value="pacote">Pacote</option><option value="kg">kg</option><option value="litro">Litro</option></select><button class="danger" type="button">Remover</button>`;
+        row.querySelector('[data-purchase-unit]').value = item.unit || 'unidade'; row.querySelector('button').onclick = () => row.remove(); ui.purchaseItems.appendChild(row);
+      }
+      async function openInternalPurchase() {
+        showScreen('internal-purchase'); ui.purchaseStatus.textContent = 'Carregando pedidos e locais...'; ui.purchaseItems.innerHTML = ''; addPurchaseItem();
+        const [{ data: orders, error: orderError }, { data: units, error: unitError }] = await Promise.all([
+          supabaseClient.from('opeixeiro_orders').select('id,delivery_date,status,opeixeiro_units!opeixeiro_orders_destination_unit_id_fkey(name)').in('status',['submitted','scheduled_next_day']).order('delivery_date'),
+          supabaseClient.from('opeixeiro_units').select('id,name,code').eq('active',true).order('name')
+        ]);
+        if (orderError || unitError) { ui.purchaseStatus.textContent = 'Não foi possível carregar dados: ' + (orderError || unitError).message; return; }
+        ui.purchaseOrder.innerHTML = '<option value="">Sem pedido vinculado</option>' + (orders || []).map(o => `<option value="${o.id}">${o.delivery_date} · ${o.opeixeiro_units?.name || 'Destino'}</option>`).join('');
+        const opts = (units || []).map(u => `<option value="${u.id}">${u.name}</option>`).join(''); ui.purchaseSupplyOrigin.innerHTML = '<option value="">Selecione</option>' + opts; ui.purchaseCashUnit.innerHTML = '<option value="">Selecione o caixa</option>' + opts;
+        if (state.currentOrder?.id) ui.purchaseOrder.value = state.currentOrder.id;
+        ui.purchaseStatus.textContent = 'Preencha a autorização, os itens e fotografe somente a nota fiscal.';
+      }
+      async function confirmInternalPurchase() {
+        const orderId = ui.purchaseOrder.value || null, originId = ui.purchaseSupplyOrigin.value, source = ui.purchaseAuthorization.value, store = ui.purchaseMarket.checked ? 'Mercado' : ui.purchaseStore.value.trim();
+        const items = [...ui.purchaseItems.querySelectorAll('.row')].map(row => ({ name: row.querySelector('[data-purchase-name]').value.trim(), qty: Number(row.querySelector('[data-purchase-qty]').value), unit: row.querySelector('[data-purchase-unit]').value })).filter(i => i.name && i.qty > 0);
+        if (!orderId || !originId || !store || !items.length || (source === 'cash' && !ui.purchaseCashUnit.value)) { ui.purchaseStatus.textContent = 'Vincule um pedido pendente e preencha local solicitante, autorização, compra e pelo menos um item.'; return; }
+        const payload = { order_id: orderId, driver_name: state.driver, supply_origin_unit_id: originId, authorization_source: source, authorized_by: source === 'responsible' ? ui.purchaseResponsible.value : null, cash_unit_id: source === 'cash' ? ui.purchaseCashUnit.value : null, store_name: store, is_market: ui.purchaseMarket.checked, purchased_items: items, created_before_pickup: !(state.pickupStops || []).some(stop => stop.collected), status: 'draft' };
+        ui.purchaseStatus.textContent = 'Registrando compra; em seguida a câmera abrirá para a nota fiscal...';
+        const { data, error } = await supabaseClient.from('opeixeiro_internal_purchase_relations').insert(payload).select('id').single();
+        if (error) { ui.purchaseStatus.textContent = 'Não foi possível registrar: ' + error.message; return; }
+        const summary = JSON.stringify({ store, source, authorized_by: payload.authorized_by, items });
+        if (window.AndroidScanner?.captureInternalPurchaseReceipt) window.AndroidScanner.captureInternalPurchaseReceipt(data.id, orderId || '', state.driver, summary);
+        else ui.purchaseStatus.textContent = 'A nota fiscal só pode ser fotografada no APK do motorista.';
+      }
+      window.onInternalPurchaseReceipt = (ok, message) => { ui.purchaseStatus.textContent = message || (ok ? 'Compra registrada e nota enviada ao grupo.' : 'A foto da nota fiscal é obrigatória.'); if (ok) setTimeout(() => loadOrders(), 900); };
+
+      async function loadDriverSummary() {
+        const driver = String(state.driver || '').trim();
+        if (!driver) return;
+        const { data, error } = await supabaseClient.from('opeixeiro_delivery_receipts').select('order_id,items,scanned_at').eq('scanned_by_driver', driver).eq('status', 'scanned');
+        if (error) { ui.driverStats.textContent = 'Resumo indisponível.'; return; }
+        const now = new Date(), startDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()), startWeek = new Date(startDay), startMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        startWeek.setDate(startDay.getDate() - ((startDay.getDay() + 6) % 7));
+        const totals = (from) => { const rows = (data || []).filter(row => new Date(row.scanned_at) >= from); return { deliveries: new Set(rows.map(row => row.order_id)).size, goods: rows.reduce((sum,row) => sum + (row.items || []).reduce((sub,item) => sub + (Number(item.qty)||0),0),0) }; };
+        const today=totals(startDay), week=totals(startWeek), month=totals(startMonth);
+        ui.driverStats.textContent = `Hoje: ${today.deliveries} entrega(s), ${today.goods} mercadoria(s) · Semana: ${week.deliveries} entrega(s) · Mês: ${month.deliveries} entrega(s).`;
+        const readyOrders = await getReadyDriverDeliveries(driver);
+        const pendingCount = readyOrders.length;
+        ui.pendingDeliveryBanner.style.display = pendingCount ? 'block' : 'none';
+        ui.pendingDeliveryBanner.textContent = pendingCount ? `Você está com ${pendingCount} entrega(s) para finalizar. Toque aqui para abrir ${pendingCount === 1 ? 'a entrega iniciada' : 'a próxima entrega iniciada'}.` : '';
+      }
+
+      async function getReadyDriverDeliveries(driver) {
+        const { data, error } = await supabaseClient.from('opeixeiro_orders').select(`
+          id,destination_unit_id,origin_unit_id,requested_by,delivery_date,status,checker_name,recipient_name,created_at,
+          opeixeiro_profiles!inner(display_name),
+          opeixeiro_order_items(id,requested_qty,unit,opeixeiro_products(canonical_name,category,is_emergency),opeixeiro_order_item_pickups(origin_unit_id,planned_qty,checker_name)),
+          opeixeiro_dispatch_releases(origin_unit_id,driver_name,status,scanned_at)
+        `).in('status', ['submitted', 'scheduled_next_day']);
+        if (error) throw error;
+        const normalizedDriver = String(driver || '').trim().toLocaleLowerCase();
+        return (data || []).filter(order => {
+          const originIds = new Set();
+          (order.opeixeiro_order_items || []).forEach(item => {
+            const assignments = item.opeixeiro_order_item_pickups || [];
+            if (assignments.length) assignments.forEach(assignment => originIds.add(assignment.origin_unit_id));
+            else if (order.origin_unit_id) originIds.add(order.origin_unit_id);
+          });
+          return originIds.size && [...originIds].every(originId => (order.opeixeiro_dispatch_releases || []).some(release =>
+            release.origin_unit_id === originId && release.status === 'scanned' && String(release.driver_name || '').trim().toLocaleLowerCase() === normalizedDriver
+          ));
+        });
+      }
+
+      async function openPendingDelivery() {
+        const driver = String(state.driver || '').trim();
+        if (!driver) return;
+        ui.pendingDeliveryBanner.disabled = true;
+        ui.pendingDeliveryBanner.textContent = 'Abrindo a entrega em andamento…';
+        try {
+          const readyOrders = await getReadyDriverDeliveries(driver);
+          const order = readyOrders[0];
+          if (!order) { await loadDriverSummary(); return; }
+          await selectOrder(order);
+        } catch (error) {
+          showStatus('ordersStatus', 'Não foi possível abrir a entrega em andamento: ' + (error.message || 'erro desconhecido'), 'error');
+        } finally {
+          ui.pendingDeliveryBanner.disabled = false;
+        }
+      }
+
+      function renderMultiPickupDetails() {
+        const visible = state.pickupStops.length === 1 || (ui.twoStopsContainer.style.display !== 'none' && ui.twoStopsCheckbox.checked);
+        ui.multiPickupDetails.style.display = visible ? 'grid' : 'none';
+        if (!visible) return;
+        ui.multiPickupStops.innerHTML = state.pickupStops.map((stop, index) => `
+          <div class="stop-item"><div style="width:100%"><strong>${index + 1}. ${stop.name}</strong>
+            <div class="meta">Conferente: ${stop.checker || 'A definir'}</div>
+            ${stop.collected ? `<div class="status" style="display:block; color:var(--accent)">Coleta aceita por ${state.driver}. ${stop.departed ? 'Motorista já saiu deste local.' : 'Confirme a saída ou desista antes de sair.'}</div>${stop.departed ? '' : `<div class="row" style="margin-top:10px"><button class="primary" data-action="depart" data-stop="${index}">Sair do local com a mercadoria</button><button class="danger" data-action="withdraw" data-stop="${index}">Desistir desta coleta</button></div>`}` : stop.arrived ? stop.items.map((item, itemIndex) => `<div class="collection-item"><span>${item.name}</span><button class="secondary" data-action="minus" data-stop="${index}" data-item="${itemIndex}">−</button><input class="qty-box" value="${item.qty}" readonly><span class="meta">${item.unit}</span></div>`).join('') + `<div class="row" style="margin-top:10px"><button class="primary" data-action="scan" data-stop="${index}">Escanear QR do conferente</button></div>` : `<div class="row" style="margin-top:10px"><button class="primary" data-action="arrived" data-stop="${index}">Cheguei ao local de coleta</button></div>`}
+          </div></div>
+        `).join('') + (() => {
+          const collected = state.pickupStops.filter(stop => stop.collected);
+          const pending = state.pickupStops.filter(stop => !stop.collected);
+          if (!collected.length || !pending.length) return '';
+          const canFinish = collected.every(stop => stop.departed);
+          return `<div class="stop-item"><div style="width:100%"><strong>Quer encerrar as coletas por hoje?</strong><div class="meta">Você levará somente as ${collected.length} coleta(s) já confirmada(s). As ${pending.length} restante(s) serão reagendadas para o próximo dia.</div><div class="row" style="margin-top:10px"><button class="secondary" data-action="finish-partial" ${canFinish ? '' : 'disabled'}>${canFinish ? 'Finalizar coletas e seguir para entrega' : 'Confirme a saída das coletas aceitas'}</button></div></div></div>`;
+        })();
+        ui.multiPickupStops.querySelectorAll('button[data-action]').forEach((button) => button.addEventListener('click', () => {
+          const stop = state.pickupStops[Number(button.dataset.stop)];
+          if (button.dataset.action === 'arrived') stop.arrived = true;
+          if (button.dataset.action === 'minus') stop.items[Number(button.dataset.item)].qty = Math.max(0, stop.items[Number(button.dataset.item)].qty - 1);
+          if (button.dataset.action === 'scan') {
+            state.activePickupStop = Number(button.dataset.stop);
+            openScanner('pickup');
+          }
+          if (button.dataset.action === 'depart') markPickupDeparture(Number(button.dataset.stop));
+          if (button.dataset.action === 'withdraw') withdrawPickup(Number(button.dataset.stop));
+          if (button.dataset.action === 'finish-partial') finishCollectedStops();
+          renderMultiPickupDetails();
+        }));
+        ui.deliveryActions.style.display = state.pickupStops.length && state.pickupStops.every((stop) => stop.collected && stop.departed) ? 'grid' : 'none';
+      }
+
+      async function markPickupDeparture(stopIndex) {
+        const stop = state.pickupStops[stopIndex];
+        const { error } = await supabaseClient.from('opeixeiro_dispatch_releases').update({ departed_at: new Date().toISOString() })
+          .eq('order_id', state.currentOrder.id).eq('origin_unit_id', stop.originUnitId).eq('driver_name', state.driver).eq('status', 'scanned');
+        if (error) { showStatus('confirmStatus', 'Não foi possível registrar a saída: ' + error.message, 'error'); return; }
+        stop.departed = true;
+        await writeAuditEvent('pickup_departed', { origin_unit_id: stop.originUnitId });
+        renderMultiPickupDetails();
+      }
+
+      async function withdrawPickup(stopIndex) {
+        const stop = state.pickupStops[stopIndex];
+        if (!confirm('Desistir desta coleta antes de sair do local? O QR será liberado para outro motorista.')) return;
+        const { error } = await supabaseClient.from('opeixeiro_dispatch_releases').update({ status: 'cancelled', withdrawal_reason: 'Motorista desistiu antes de sair do local', return_requested_at: new Date().toISOString() })
+          .eq('order_id', state.currentOrder.id).eq('origin_unit_id', stop.originUnitId).eq('driver_name', state.driver).eq('status', 'scanned').is('departed_at', null);
+        if (error) { showStatus('confirmStatus', 'Não foi possível registrar a desistência: ' + error.message, 'error'); return; }
+        stop.collected = false; stop.arrived = false; stop.departed = false;
+        await writeAuditEvent('pickup_withdrawn_before_departure', { origin_unit_id: stop.originUnitId });
+        showStatus('confirmStatus', 'Desistência registrada. O conferente poderá liberar outro motorista.', 'info');
+        renderMultiPickupDetails();
+      }
+
+      async function deliverOnlyThisStop(stopIndex) {
+        const stop = state.pickupStops[stopIndex];
+        if (!stop || !confirm(`Entregar somente os itens de ${stop.name}? Os demais estoques serão reagendados automaticamente para o próximo dia.`)) return;
+        const { data, error } = await supabaseClient.rpc('opeixeiro_deliver_single_origin', { p_order_id: state.currentOrder.id, p_driver_name: state.driver, p_keep_origin_unit_id: stop.originUnitId });
+        if (error) { showStatus('confirmStatus', 'Não foi possível reagendar: ' + error.message, 'error'); return; }
+        state.pickupStops = [stop];
+        showStatus('confirmStatus', `${data.deferred_items} item(ns) de outros estoques foram reagendados para ${new Date(data.next_delivery_date + 'T12:00:00').toLocaleDateString('pt-BR')}. Você pode sair e concluir esta entrega.`, 'info');
+        renderMultiPickupDetails();
+      }
+
+      async function finishCollectedStops() {
+        const selected = state.pickupStops.filter(stop => stop.collected && stop.departed);
+        const remaining = state.pickupStops.filter(stop => !stop.collected);
+        if (!selected.length || !remaining.length) return;
+        const names = selected.map(stop => stop.name).join(', ');
+        if (!confirm(`Seguir para a entrega somente com: ${names}? As demais coletas serão reagendadas para o próximo dia.`)) return;
+        const { data, error } = await supabaseClient.rpc('opeixeiro_deliver_selected_origins', {
+          p_order_id: state.currentOrder.id,
+          p_driver_name: state.driver,
+          p_keep_origin_unit_ids: selected.map(stop => stop.originUnitId)
+        });
+        if (error) { showStatus('confirmStatus', 'Não foi possível finalizar as coletas: ' + error.message, 'error'); return; }
+        state.pickupStops = selected;
+        showStatus('confirmStatus', `${data.deferred_items} item(ns) foram reagendados para ${new Date(data.next_delivery_date + 'T12:00:00').toLocaleDateString('pt-BR')}. Você já pode escanear o QR de recebimento.`, 'info');
+        renderMultiPickupDetails();
+      }
+
+      async function openScanner(mode = 'pickup', standalone = false) {
+        state.standaloneScan = standalone;
+        ui.scannerStatus.textContent = '';
+        ui.scannerTitle.textContent = mode === 'delivery' ? 'Escanear entrega conferida' : 'Escanear despacho / coleta';
+        ui.scannerHelp.textContent = standalone ? 'Aponte a câmera. O app localizará o pedido pelo QR.' : (mode === 'delivery' ? 'Aponte a câmera para o QR de recebimento do destino.' : 'Aponte a câmera para o QR liberado para esta coleta.');
+        ui.scannerModal.classList.add('active');
+        if (window.AndroidScanner && typeof window.AndroidScanner.startScan === 'function') {
+          try {
+            state.nativeScannerStarted = false;
+            showStatus('scannerStatus', 'Abrindo câmera do aplicativo…', 'info');
+            window.location.href = 'opeixeiro://scan?mode=' + encodeURIComponent(mode);
+            setTimeout(() => {
+              if (!state.nativeScannerStarted && ui.scannerModal.classList.contains('active')) {
+                showStatus('scannerStatus', 'O app não recebeu resposta do leitor. Confirme que instalou a versão 1.3.4 e permita a câmera nas configurações do Android.', 'error');
+              }
+            }, 1500);
+          } catch (error) {
+            showStatus('scannerStatus', 'Falha ao iniciar a câmera nativa: ' + (error.message || error), 'error');
+          }
+          return;
+        }
+        if (!window.isSecureContext) {
+          showStatus('scannerStatus', 'A câmera é bloqueada quando o app abre por file://. Abra o sistema por um endereço HTTPS para escanear o QR.', 'error');
+          return;
+        }
+        if (!navigator.mediaDevices?.getUserMedia) {
+          showStatus('scannerStatus', 'Este navegador não permite abrir a câmera. Use Chrome e autorize a câmera.', 'error');
+          return;
+        }
+        if (!('BarcodeDetector' in window) && window.Html5Qrcode) {
+          await openCompatibleScanner(mode);
+          return;
+        }
+        if (!('BarcodeDetector' in window)) {
+          showStatus('scannerStatus', 'A leitora de QR não carregou. Verifique sua internet e tente novamente.', 'error');
+          return;
+        }
+        try {
+          state.scannerStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+          ui.scannerVideo.srcObject = state.scannerStream;
+          const detector = new BarcodeDetector({ formats: ['qr_code'] });
+          const scan = async () => {
+            if (!state.scannerStream) return;
+            try {
+              const codes = await detector.detect(ui.scannerVideo);
+              if (codes.length) {
+                try { await processScannedQr(mode, codes[0].rawValue); }
+                catch (error) { showStatus('confirmStatus', 'QR não validado: ' + error.message, 'error'); }
+                closeScanner();
+                return;
+              }
+            } catch (_) {}
+            requestAnimationFrame(scan);
+          };
+          ui.scannerVideo.onloadeddata = () => requestAnimationFrame(scan);
+        } catch (error) { showStatus('scannerStatus', 'Não foi possível abrir a câmera. Verifique a permissão do navegador. Detalhe: ' + error.message, 'error'); }
+      }
+
+      function closeScanner() {
+        if (state.scannerStream) state.scannerStream.getTracks().forEach((track) => track.stop());
+        state.scannerStream = null;
+        ui.scannerVideo.srcObject = null;
+        if (state.html5Scanner) {
+          const scanner = state.html5Scanner;
+          state.html5Scanner = null;
+          scanner.stop().catch(() => {}).finally(() => scanner.clear().catch(() => {}));
+        }
+        ui.scannerVideo.style.display = '';
+        ui.scannerReader.style.display = 'none';
+        ui.scannerReader.innerHTML = '';
+        ui.scannerModal.classList.remove('active');
+        state.standaloneScan = false;
+      }
+
+      async function openCompatibleScanner(mode) {
+        ui.scannerVideo.style.display = 'none';
+        ui.scannerReader.style.display = 'block';
+        try {
+          state.html5Scanner = new Html5Qrcode('scannerReader');
+          await state.html5Scanner.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 250, height: 250 } }, async (rawValue) => {
+            try { await processScannedQr(mode, rawValue); }
+            catch (error) { showStatus('confirmStatus', 'QR não validado: ' + error.message, 'error'); }
+            closeScanner();
+          }, () => {});
+        } catch (error) {
+          showStatus('scannerStatus', 'Não foi possível abrir a câmera. Autorize a permissão no Chrome. Detalhe: ' + error.message, 'error');
+        }
+      }
+
+      async function validateDeliveryReceipt(rawValue) {
+        try {
+          const receipt = JSON.parse(rawValue);
+          if (receipt.type !== 'opeixeiro_delivery_receipt' || receipt.order_id !== state.currentOrder?.id || !receipt.receipt_token) throw new Error('Este QR não pertence a esta entrega.');
+          const { data: receiptRow, error: lookupError } = await supabaseClient.from('opeixeiro_delivery_receipts').select('id,status,requester_name').eq('receipt_token', receipt.receipt_token).maybeSingle();
+          if (lookupError) throw lookupError;
+          if (!receiptRow) throw new Error('QR não encontrado.');
+          if (receiptRow.status !== 'issued') throw new Error('Este QR já foi usado ou cancelado.');
+          const { data: confirmation, error: confirmationError } = await supabaseClient.rpc('opeixeiro_confirm_delivery_receipt', { p_receipt_token: receipt.receipt_token, p_driver_name: state.driver });
+          if (confirmationError) throw confirmationError;
+          await writeAuditEvent('delivery_receipt_scanned', { receipt_id: receiptRow.id, receipt_token: receipt.receipt_token, requester_name: receiptRow.requester_name });
+          if (confirmation?.completed) {
+            const archived = Number(confirmation.emergency_products_archived) || 0;
+            showStatus('confirmStatus', archived ? `Entrega concluída. ${archived} produto(s) emergencial(is) removido(s) do catálogo.` : 'Entrega concluída.', 'info');
+            alert(archived ? `Entrega concluída. ${archived} produto(s) emergencial(is) foram removido(s) do catálogo; o histórico foi preservado.` : 'Entrega concluída. Voltando para mais entregas.');
+            state.currentOrder = null; state.pickupStops = []; saveLocalState();
+            setTimeout(() => loadOrders(), 300);
+          } else showStatus('confirmStatus', 'Recebimento de ' + receipt.requester_name + ' confirmado. Falta outro conferente finalizar.', 'info');
+        } catch (error) { showStatus('confirmStatus', 'QR de recebimento inválido: ' + error.message, 'error'); }
+      }
+
+      async function validatePickupRelease(rawValue) {
+        try {
+          const release = JSON.parse(rawValue);
+          if (release.type !== 'opeixeiro_dispatch_release' || release.order_id !== state.currentOrder?.id || !release.release_token) throw new Error('Este QR não pertence a esta coleta.');
+          const activeStop = state.pickupStops[state.activePickupStop];
+          if (!activeStop) throw new Error('Abra a coleta correta antes de escanear o QR.');
+          if (release.origin_unit_id !== activeStop.originUnitId) throw new Error('Este QR é de outro local de coleta.');
+          const { data: releaseRow, error: lookupError } = await supabaseClient.from('opeixeiro_dispatch_releases').select('id,status,driver_name,origin_unit_id').eq('release_token', release.release_token).maybeSingle();
+          if (lookupError) throw lookupError;
+          if (!releaseRow) throw new Error('QR não encontrado.');
+          if (releaseRow.status === 'scanned') throw new Error('Você já coletou este pedido; falta entregar no destino.');
+          if (releaseRow.status !== 'released') throw new Error('Este QR foi cancelado e não pode ser usado.');
+          if (releaseRow.driver_name.trim().toLowerCase() !== String(state.driver).trim().toLowerCase()) throw new Error('Este QR foi liberado para outro motorista.');
+          const acceptedAt = new Date().toISOString();
+          const { error: updateError } = await supabaseClient.from('opeixeiro_dispatch_releases').update({ status: 'scanned', scanned_at: acceptedAt, accepted_at: acceptedAt, accepted_by_driver: state.driver }).eq('id', releaseRow.id).eq('status', 'released');
+          if (updateError) throw updateError;
+          await writeAuditEvent('pickup_scanned', { release_id: releaseRow.id, release_token: release.release_token, origin_unit_id: releaseRow.origin_unit_id, collected_items: activeStop.items.filter(item => item.qty > 0) });
+          const hasEmergency = (state.currentOrder?.opeixeiro_order_items || []).some(item => item.opeixeiro_products?.is_emergency);
+          if (hasEmergency) {
+            window.AndroidScanner?.reportEmergencyPickup?.(state.currentOrder.id, state.driver);
+            alert('Coleta emergencial confirmada. Tire agora a foto obrigatória dos produtos para enviar ao grupo de logística.');
+            window.AndroidScanner?.captureEmergencyProductPhoto?.(state.currentOrder.id, state.driver);
+          }
+          activeStop.collected = true;
+          activeStop.departed = false;
+          renderMultiPickupDetails();
+          showStatus('confirmStatus', 'Coleta conferida e registrada com data e hora.', 'info');
+        } catch (error) { showStatus('confirmStatus', 'QR de coleta inválido: ' + error.message, 'error'); }
+      }
+
+      async function processScannedQr(mode, rawValue) {
+        if (state.standaloneScan) {
+          let payload;
+          try { payload = JSON.parse(rawValue); } catch (_) { throw new Error('Este não é um QR do O Peixeiro.'); }
+          const expectedType = mode === 'delivery' ? 'opeixeiro_delivery_receipt' : 'opeixeiro_dispatch_release';
+          if (payload.type !== expectedType || !payload.order_id) throw new Error('Este QR não é desta etapa.');
+          const { data: order, error } = await supabaseClient.from('opeixeiro_orders').select(`
+            id,destination_unit_id,origin_unit_id,requested_by,delivery_date,status,checker_name,recipient_name,created_at,
+            opeixeiro_profiles!inner(display_name),
+            opeixeiro_order_items(id,requested_qty,unit,opeixeiro_products(canonical_name,category,is_emergency),opeixeiro_order_item_pickups(origin_unit_id,planned_qty,checker_name))
+          `).eq('id', payload.order_id).maybeSingle();
+          if (error || !order) throw error || new Error('Pedido não encontrado.');
+          await selectOrder(order);
+          if (mode === 'pickup') {
+            const stopIndex = state.pickupStops.findIndex(stop => stop.originUnitId === payload.origin_unit_id);
+            if (stopIndex < 0) throw new Error('O local deste QR não existe no pedido.');
+            state.activePickupStop = stopIndex;
+            state.pickupStops[stopIndex].arrived = true;
+            renderMultiPickupDetails();
+          } else if (state.pickupStops.some(stop => !stop.collected)) {
+            throw new Error('Finalize todas as coletas antes de confirmar a entrega.');
+          }
+        }
+        if (mode === 'delivery') await validateDeliveryReceipt(rawValue);
+        else await validatePickupRelease(rawValue);
+      }
+
+      window.onNativeQrScan = async (mode, rawValue) => {
+        try {
+          await processScannedQr(mode, rawValue);
+        } catch (error) {
+          showStatus('confirmStatus', 'QR não validado: ' + error.message, 'error');
+        } finally {
+          closeScanner();
+        }
+      };
+
+      window.onNativeQrCancelled = () => closeScanner();
+
+      window.onNativeScannerError = (message) => {
+        ui.scannerModal.classList.add('active');
+        showStatus('scannerStatus', message || 'Não foi possível abrir a câmera.', 'error');
+      };
+
+      window.onNativeScannerStarting = () => { state.nativeScannerStarted = true; showStatus('scannerStatus', 'Câmera nativa iniciada. Aguarde o leitor abrir…', 'info'); };
+
+      async function writeAuditEvent(eventType, metadata) {
+        const payload = { order_id: state.currentOrder?.id || null, event_type: eventType, actor_name: state.driver, client_occurred_at: new Date().toISOString(), device_user_agent: navigator.userAgent, device_platform: navigator.platform, device_language: navigator.language, screen_size: `${screen.width}x${screen.height}`, network_hint: navigator.connection?.effectiveType || null, metadata };
+        const { error } = await supabaseClient.from('opeixeiro_operational_events').insert(payload);
+        if (error) console.warn('Evento de auditoria pendente:', error);
+      }
+
+      async function bootstrap() {
+        document.title = 'O Peixeiro Motorista · 1.3.4';
+        getLocalState();
+        await loadDriverList();
+        attachEvents();
+
+        if (state.driver) {
+          ui.existingDrivers.value = state.driver;
+          await loadOrders();
+        }
+      }
+
+      bootstrap();
+    </script>
+  </body>
+</html>

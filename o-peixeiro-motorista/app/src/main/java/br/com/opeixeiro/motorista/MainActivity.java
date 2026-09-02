@@ -296,7 +296,6 @@ public class MainActivity extends AppCompatActivity {
         }
         try {
             Intent intent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
-            if (intent.resolveActivity(getPackageManager()) == null) throw new IllegalStateException("Câmera indisponível neste aparelho");
             startActivityForResult(intent, REQUEST_INTERNAL_PURCHASE_RECEIPT);
         } catch (Exception error) {
             if (webView != null) webView.evaluateJavascript("window.onInternalPurchaseReceipt && window.onInternalPurchaseReceipt(false,'Não foi possível abrir a câmera. Verifique a permissão e tente novamente.');", null);

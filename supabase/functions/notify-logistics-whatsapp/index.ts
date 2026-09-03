@@ -16,7 +16,7 @@ const db = createClient(supabaseUrl, serviceRoleKey);
 type WebhookPayload = {
   type?: string;
   table?: string;
-  record?: { order_id?: string; status?: string; driver_name?: string; checker_name?: string; scanned_by_driver?: string; requester_name?: string; items?: unknown; event_type?: string; actor_name?: string; metadata?: { next_order_id?: string; deferred_items?: number } };
+  record?: { order_id?: string; status?: string; driver_name?: string; checker_name?: string; scanned_by_driver?: string; requester_name?: string; items?: unknown; event_type?: string; actor_name?: string; message?: string; metadata?: { next_order_id?: string; deferred_items?: number } };
 };
 
 function text(value: unknown): string {
@@ -109,6 +109,12 @@ serve(async (request) => {
 
   try {
     const payload = await request.json() as WebhookPayload;
+    if (payload.table === "opeixeiro_scheduled_announcement") {
+      const announcement = text(payload.record?.message);
+      if (!announcement) return Response.json({ ignored: true });
+      await sendGreenMessage(announcement);
+      return Response.json({ sent: true, scheduled: true });
+    }
     const acceptedTables = ["opeixeiro_order_contributions", "opeixeiro_dispatch_releases", "opeixeiro_delivery_receipts", "opeixeiro_operational_events"];
     if (!acceptedTables.includes(payload.table || "") || !payload.record?.order_id) {
       return Response.json({ ignored: true });

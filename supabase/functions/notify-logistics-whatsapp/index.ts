@@ -125,7 +125,7 @@ serve(async (request) => {
     if (payload.table === "opeixeiro_delivery_receipts" && payload.record.status !== "scanned") {
       return Response.json({ ignored: true });
     }
-    if (payload.table === "opeixeiro_operational_events" && !["partial_route_rescheduled", "admin_manual_delivery_confirmed"].includes(text(payload.record.event_type))) {
+    if (payload.table === "opeixeiro_operational_events" && !["partial_route_rescheduled", "admin_manual_delivery_confirmed", "admin_order_items_cancelled"].includes(text(payload.record.event_type))) {
       return Response.json({ ignored: true });
     }
 
@@ -214,6 +214,11 @@ serve(async (request) => {
       lines.push("", `Situação: ${nextDate}.`);
       await sendGreenMessage(lines.join("\n"));
       return Response.json({ sent: true, order_id: order.id, manual_delivery: true });
+    }
+    if (payload.table === "opeixeiro_operational_events" && payload.record.event_type === "admin_order_items_cancelled") {
+      const cancelled = Array.isArray(payload.record.metadata?.cancelled_items) ? payload.record.metadata.cancelled_items as Array<Record<string, unknown>> : [];
+      await sendGreenMessage(["🚫 *Itens não são mais necessários*", `Solicitado por: ${text(payload.record.actor_name) || "Administração"}`, `Destino: ${destination}`, "", "*Itens removidos do pedido e sem reagendamento:*", formatItems(cancelled.map((item) => ({ name: text(item.name), qty: Number(item.qty) || 0, unit: text(item.unit) || "unidade" }))) || "• Nenhum item informado"].join("\n"));
+      return Response.json({ sent: true, order_id: order.id, cancelled: true });
     }
     if (payload.table === "opeixeiro_dispatch_releases") {
       const collected = payload.record.status === "scanned";

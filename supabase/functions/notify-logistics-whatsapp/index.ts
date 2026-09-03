@@ -16,7 +16,7 @@ const db = createClient(supabaseUrl, serviceRoleKey);
 type WebhookPayload = {
   type?: string;
   table?: string;
-  record?: { order_id?: string; status?: string; driver_name?: string; checker_name?: string; scanned_by_driver?: string; requester_name?: string; items?: unknown; event_type?: string; actor_name?: string; message?: string; metadata?: { next_order_id?: string; deferred_items?: number } };
+  record?: { order_id?: string; status?: string; driver_name?: string; checker_name?: string; scanned_by_driver?: string; requester_name?: string; items?: unknown; event_type?: string; actor_name?: string; message?: string; metadata?: Record<string, unknown> };
 };
 
 function text(value: unknown): string {
@@ -125,7 +125,7 @@ serve(async (request) => {
     if (payload.table === "opeixeiro_delivery_receipts" && payload.record.status !== "scanned") {
       return Response.json({ ignored: true });
     }
-    if (payload.table === "opeixeiro_operational_events" && payload.record.event_type !== "partial_route_rescheduled") {
+    if (payload.table === "opeixeiro_operational_events" && !["partial_route_rescheduled", "admin_manual_delivery_confirmed"].includes(text(payload.record.event_type))) {
       return Response.json({ ignored: true });
     }
 
@@ -148,7 +148,7 @@ serve(async (request) => {
     }
     const requesters = (order.opeixeiro_order_contributions || []).map((row: { requester_name?: string }) => text(row.requester_name)).filter(Boolean).join(", ");
     const destination = text(order.opeixeiro_units?.name) || text(order.opeixeiro_units?.code) || "Destino não informado";
-    if (payload.table === "opeixeiro_operational_events") {
+    if (payload.table === "opeixeiro_operational_events" && payload.record.event_type === "partial_route_rescheduled") {
       const nextOrderId = text(payload.record.metadata?.next_order_id);
       if (!nextOrderId) throw new Error("Reagendamento sem pedido futuro");
       const { data: nextOrder, error: nextOrderError } = await db
@@ -177,6 +177,38 @@ serve(async (request) => {
       ].join("\n");
       await sendGreenMessage(message);
       return Response.json({ sent: true, order_id: order.id, rescheduled_order_id: nextOrderId });
+    }
+    if (payload.table === "opeixeiro_operational_events" && payload.record.event_type === "admin_manual_delivery_confirmed") {
+      const metadata = payload.record.metadata || {};
+      const delivered = confirmedItems(metadata.items);
+      const shortages = Array.isArray(metadata.shortages) ? metadata.shortages as Array<Record<string, unknown>> : [];
+      const extras = Array.isArray(metadata.extras) ? metadata.extras as Array<Record<string, unknown>> : [];
+      const purchase = metadata.purchase as Record<string, unknown> | null;
+      const purchased = Array.isArray(purchase?.purchased_items) ? purchase.purchased_items as Array<Record<string, unknown>> : [];
+      const nextOrderId = text(metadata.next_order_id);
+      const nextDate = nextOrderId ? "reposição criada para o próximo agendamento" : "sem reposição pendente";
+      const lines = [
+        "📋 *Entrega concluída manualmente*",
+        `Motorista: ${text(metadata.driver_name) || "não informado"}`,
+        `Destino: ${destination}`,
+        `Entrega: ${text(order.delivery_date)}`,
+        "",
+        "*Itens informados como entregues:*",
+        formatConfirmedItems(delivered, "entregues:") || "• Nenhum item informado",
+      ];
+      if (shortages.length) {
+        lines.push("", "⚠️ *Não coletados / não entregues — ficam para o próximo agendamento:*", formatItems(shortages.map((item) => ({ name: text(item.name), qty: Number(item.qty) || 0, unit: text(item.unit) || "unidade" }))));
+      }
+      if (extras.length) {
+        lines.push("", "➕ *Quantidade a mais informada na entrega:*", formatItems(extras.map((item) => ({ name: text(item.name), qty: Number(item.qty) || 0, unit: text(item.unit) || "unidade" }))));
+      }
+      if (purchased.length) {
+        const money = text(purchase?.authorization_source) === "cash" ? "dinheiro do caixa" : `verba entregue por ${text(purchase?.authorized_by) || "responsável"}`;
+        lines.push("", "🛒 *Compra de última hora adicionada ao estoque:*", `Local: ${text(purchase?.store_name) || "não informado"} · ${money}`, formatItems(purchased.map((item) => ({ name: text(item.name), qty: Number(item.qty) || 0, unit: text(item.unit) || "unidade" }))));
+      }
+      lines.push("", `Situação: ${nextDate}.`);
+      await sendGreenMessage(lines.join("\n"));
+      return Response.json({ sent: true, order_id: order.id, manual_delivery: true });
     }
     if (payload.table === "opeixeiro_dispatch_releases") {
       const collected = payload.record.status === "scanned";

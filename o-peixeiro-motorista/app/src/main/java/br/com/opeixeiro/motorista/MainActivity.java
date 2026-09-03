@@ -432,7 +432,7 @@ public class MainActivity extends AppCompatActivity {
                         .put("device_id", deviceAuditId()).put("receipt_base64", imageBase64);
                 postAudit(body);
                 internalPurchaseImageBase64 = null;
-                if (webView != null) webView.post(() -> webView.evaluateJavascript("window.onInternalPurchaseReceipt && window.onInternalPurchaseReceipt(true,'Compra registrada. Nota fiscal enviada ao grupo de logística.');", null));
+                if (webView != null) webView.post(() -> webView.evaluateJavascript("window.onInternalPurchaseReceipt && window.onInternalPurchaseReceipt(true,'Compra coletada e a caminho do destino. Nota fiscal enviada ao grupo de logística.');", null));
             } catch (Exception error) {
                 if (webView != null) webView.post(() -> webView.evaluateJavascript("window.onInternalPurchaseReceipt && window.onInternalPurchaseReceipt(false,'Não foi possível enviar a nota fiscal. Tente novamente.');", null));
             }

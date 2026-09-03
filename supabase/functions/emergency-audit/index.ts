@@ -63,7 +63,7 @@ serve(async (req) => {
       if (uploadError) throw uploadError;
       const itemLines = Array.isArray(purchase.purchased_items) ? purchase.purchased_items.map((item: any) => `• ${item.name}: ${item.qty} ${item.unit || "unidade"}`).join("\n") : "• Itens não informados";
       const author = purchase.authorization_source === "cash" ? "Verba retirada de caixa" : `Autorizado por: ${clean(purchase.authorized_by)}`;
-      const caption = `🧾 *Compra externa autorizada — Relação interna*\nMotorista: ${name}\nSolicitante do abastecimento: ${clean(purchase.opeixeiro_units?.name)}\n${author}\nLocal da compra: ${clean(purchase.store_name)}\n\n*Itens comprados:*\n${itemLines}\n\nFoto obrigatória: nota fiscal.`;
+      const caption = `🧾 *Compra externa coletada — A caminho do destino*\nMotorista: ${name}\nDestino: ${clean(purchase.opeixeiro_units?.name)}\nStatus: compra coletada; motorista saiu para entrega.\n${author}\nLocal da compra: ${clean(purchase.store_name)}\n\n*Itens comprados:*\n${itemLines}\n\nComprovante: nota fiscal.`;
       const stockEntries = Array.isArray(purchase.purchased_items) ? purchase.purchased_items
         .filter((item: any) => clean(item?.name) && Number(item?.qty) > 0)
         .map((item: any) => ({ purchase_relation_id: purchaseId, order_id: orderId, destination_unit_id: purchase.supply_origin_unit_id, product_name: clean(item.name), quantity: Number(item.qty), unit: clean(item.unit) || "unidade", driver_name: name })) : [];

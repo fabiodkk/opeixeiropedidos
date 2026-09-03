@@ -81,6 +81,8 @@ public class MainActivity extends AppCompatActivity {
     private WebView webView;
     private String webScannerMode;
     private ImageCapture selfieCapture;
+    private ImageCapture internalPurchaseCapture;
+    private ProcessCameraProvider internalPurchaseCameraProvider;
     private boolean selfieCaptureInProgress = false;
     private boolean selfieSessionVerified = false;
     private TextView selfieStatus;
@@ -257,7 +259,7 @@ public class MainActivity extends AppCompatActivity {
                     internalPurchaseDriver = uri.getQueryParameter("driver");
                     internalPurchaseSummary = "";
                     internalPurchaseImageBase64 = null;
-                    launchInternalPurchaseCamera();
+                    showInternalPurchaseCamera();
                     return true;
                 }
                 if ("opeixeiro".equals(uri.getScheme()) && "save-internal-receipt".equals(uri.getHost())) {
@@ -294,7 +296,7 @@ public class MainActivity extends AppCompatActivity {
         @JavascriptInterface public void captureInternalPurchaseReceipt(String purchaseId, String orderId, String name, String summary) {
             runOnUiThread(() -> {
                 internalPurchaseId = purchaseId; internalPurchaseOrderId = orderId; internalPurchaseDriver = name; internalPurchaseSummary = summary; internalPurchaseImageBase64 = null;
-                launchInternalPurchaseCamera();
+                showInternalPurchaseCamera();
             });
         }
         @JavascriptInterface public void saveInternalPurchaseReceipt() {
@@ -306,17 +308,86 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void launchInternalPurchaseCamera() {
+    /** Câmera própria do APK: não depende do aplicativo de câmera do celular. */
+    private void showInternalPurchaseCamera() {
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.CAMERA}, PERMISSION_INTERNAL_PURCHASE_CAMERA);
             return;
         }
-        try {
-            Intent intent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
-            startActivityForResult(intent, REQUEST_INTERNAL_PURCHASE_RECEIPT);
-        } catch (Exception error) {
-            if (webView != null) webView.evaluateJavascript("window.onInternalPurchaseReceipt && window.onInternalPurchaseReceipt(false,'Não foi possível abrir a câmera. Verifique a permissão e tente novamente.');", null);
+
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(dp(18), dp(24), dp(18), dp(20));
+        root.setBackgroundColor(Color.parseColor("#07131B"));
+        root.addView(labelDark("Foto da nota fiscal", 24f, Color.WHITE));
+        root.addView(labelDark("Fotografe somente a nota fiscal. Não tire foto do comprovante da maquininha.", 14f, Color.parseColor("#BFD2D6")));
+        PreviewView previewView = new PreviewView(this);
+        previewView.setImplementationMode(PreviewView.ImplementationMode.COMPATIBLE);
+        LinearLayout.LayoutParams previewParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
+        previewParams.setMargins(0, dp(16), 0, dp(14));
+        root.addView(previewView, previewParams);
+        MaterialButton captureButton = new MaterialButton(this);
+        captureButton.setText("Tirar foto da nota fiscal");
+        root.addView(captureButton, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        MaterialButton cancelButton = new MaterialButton(this);
+        cancelButton.setText("Cancelar");
+        LinearLayout.LayoutParams cancelParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        cancelParams.setMargins(0, dp(8), 0, 0);
+        root.addView(cancelButton, cancelParams);
+        setContentView(root);
+
+        ListenableFuture<ProcessCameraProvider> future = ProcessCameraProvider.getInstance(this);
+        future.addListener(() -> {
+            try {
+                internalPurchaseCameraProvider = future.get();
+                Preview preview = new Preview.Builder().build();
+                preview.setSurfaceProvider(previewView.getSurfaceProvider());
+                internalPurchaseCapture = new ImageCapture.Builder().setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY).build();
+                internalPurchaseCameraProvider.unbindAll();
+                internalPurchaseCameraProvider.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, preview, internalPurchaseCapture);
+            } catch (Exception error) {
+                returnToInternalPurchaseWeb(false, "Não foi possível iniciar a câmera. Verifique a permissão e tente novamente.");
+            }
+        }, ContextCompat.getMainExecutor(this));
+        captureButton.setOnClickListener(view -> captureInternalPurchaseReceipt(captureButton));
+        cancelButton.setOnClickListener(view -> returnToInternalPurchaseWeb(false, "A foto da nota fiscal é obrigatória para salvar a compra."));
+    }
+
+    private void captureInternalPurchaseReceipt(MaterialButton captureButton) {
+        if (internalPurchaseCapture == null) {
+            Toast.makeText(this, "A câmera ainda está iniciando. Tente novamente em alguns segundos.", Toast.LENGTH_LONG).show();
+            return;
         }
+        captureButton.setEnabled(false);
+        captureButton.setText("Salvando foto…");
+        File folder = new File(getCacheDir(), "internal-purchase-receipts");
+        if (!folder.exists()) folder.mkdirs();
+        File output = new File(folder, "nota_" + System.currentTimeMillis() + ".jpg");
+        ImageCapture.OutputFileOptions options = new ImageCapture.OutputFileOptions.Builder(output).build();
+        internalPurchaseCapture.takePicture(options, ContextCompat.getMainExecutor(this), new ImageCapture.OnImageSavedCallback() {
+            @Override public void onImageSaved(ImageCapture.OutputFileResults results) {
+                try {
+                    internalPurchaseImageBase64 = imageBase64(output);
+                    returnToInternalPurchaseWeb(true, "Foto tirada. Agora toque em Salvar compra e enviar comprovante.");
+                } catch (Exception error) {
+                    returnToInternalPurchaseWeb(false, "Não foi possível preparar a foto. Tente novamente.");
+                }
+            }
+            @Override public void onError(ImageCaptureException error) {
+                captureButton.setEnabled(true);
+                captureButton.setText("Tirar foto da nota fiscal");
+                Toast.makeText(MainActivity.this, "Não foi possível tirar a foto. Tente novamente.", Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    private void returnToInternalPurchaseWeb(boolean captured, String message) {
+        if (internalPurchaseCameraProvider != null) internalPurchaseCameraProvider.unbindAll();
+        internalPurchaseCapture = null;
+        if (webView == null) return;
+        setContentView(webView);
+        String javascript = "window.onInternalPurchasePhotoCaptured && window.onInternalPurchasePhotoCaptured(" + captured + "," + JSONObject.quote(message) + ");";
+        webView.post(() -> webView.evaluateJavascript(javascript, null));
     }
 
     private String deviceAuditId() { return Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID); }
@@ -978,8 +1049,8 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         if (requestCode == PERMISSION_INTERNAL_PURCHASE_CAMERA) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) launchInternalPurchaseCamera();
-            else if (webView != null) webView.evaluateJavascript("window.onInternalPurchaseReceipt && window.onInternalPurchaseReceipt(false,'A câmera é necessária para fotografar a nota fiscal.');", null);
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) showInternalPurchaseCamera();
+            else if (webView != null) webView.evaluateJavascript("window.onInternalPurchasePhotoCaptured && window.onInternalPurchasePhotoCaptured(false,'A câmera é necessária para fotografar a nota fiscal.');", null);
         }
     }
 }

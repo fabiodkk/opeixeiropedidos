@@ -198,6 +198,7 @@ serve(async (request) => {
         "*Itens informados como entregues:*",
         formatConfirmedItems(delivered, "entregues:") || "• Nenhum item informado",
       ];
+      if (text(metadata.notes)) lines.push("", "*Motivo / relato informado no lançamento manual:*", text(metadata.notes));
       if (shortages.length) {
         lines.push("", "⚠️ *Não coletados / não entregues — ficam para o próximo agendamento:*", formatItems(shortages.map((item) => ({ name: text(item.name), qty: Number(item.qty) || 0, unit: text(item.unit) || "unidade" }))));
       }

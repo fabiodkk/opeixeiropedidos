@@ -2,6 +2,7 @@ package br.com.opeixeiro.motorista;
 
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.pm.ActivityInfo;
 import android.graphics.Color;
 import android.graphics.Bitmap;
 import android.net.Uri;
@@ -314,6 +315,7 @@ public class MainActivity extends AppCompatActivity {
             ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.CAMERA}, PERMISSION_INTERNAL_PURCHASE_CAMERA);
             return;
         }
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -384,6 +386,7 @@ public class MainActivity extends AppCompatActivity {
     private void returnToInternalPurchaseWeb(boolean captured, String message) {
         if (internalPurchaseCameraProvider != null) internalPurchaseCameraProvider.unbindAll();
         internalPurchaseCapture = null;
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
         if (webView == null) return;
         setContentView(webView);
         String javascript = "window.onInternalPurchasePhotoCaptured && window.onInternalPurchasePhotoCaptured(" + captured + "," + JSONObject.quote(message) + ");";

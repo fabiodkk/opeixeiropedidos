@@ -876,7 +876,13 @@
           const { data, error } = await supabaseClient.from('opeixeiro_internal_purchase_relations').insert(payload).select('id').single();
           if (error || !data?.id) throw error || new Error('Compra não registrada.');
           ui.purchaseStatus.textContent = 'Agora fotografe a NOTA FISCAL. Não fotografe comprovante da maquininha.';
-          window.location.href = 'opeixeiro://internal-receipt?purchase_id=' + encodeURIComponent(data.id) + '&order_id=' + encodeURIComponent(orderId) + '&driver=' + encodeURIComponent(state.driver || '');
+          // Chamada direta para a câmera interna do APK. O esquema abaixo fica só
+          // como compatibilidade para aparelhos com uma versão antiga do app.
+          if (window.AndroidScanner && window.AndroidScanner.captureInternalPurchaseReceipt) {
+            window.AndroidScanner.captureInternalPurchaseReceipt(data.id, orderId, state.driver || '', '');
+          } else {
+            window.location.href = 'opeixeiro://internal-receipt?purchase_id=' + encodeURIComponent(data.id) + '&order_id=' + encodeURIComponent(orderId) + '&driver=' + encodeURIComponent(state.driver || '');
+          }
         } catch (error) {
           ui.purchaseStatus.textContent = 'Não foi possível abrir a câmera: ' + (error?.message || 'tente novamente.');
           button.disabled = false; button.textContent = 'Tirar foto da nota fiscal';

@@ -53,10 +53,12 @@ serve(async (req) => {
 
     if (action === "internal_purchase_receipt") {
       const purchaseId = clean(body.purchase_id), orderId = clean(body.order_id), name = clean(body.driver_name), image = clean(body.receipt_base64);
-      if (!purchaseId || !orderId || !name || !image) return new Response("Missing internal purchase data", { status: 400 });
-      const { data: purchase, error: purchaseError } = await db.from("opeixeiro_internal_purchase_relations")
+      if (!purchaseId || !name || !image) return new Response("Missing internal purchase data", { status: 400 });
+      let purchaseQuery = db.from("opeixeiro_internal_purchase_relations")
         .select("id,store_name,supply_origin_unit_id,authorization_source,authorized_by,purchased_items,opeixeiro_units!opeixeiro_internal_purchase_relations_supply_origin_unit_id_fkey(name)")
-        .eq("id", purchaseId).eq("order_id", orderId).eq("driver_name", name).single();
+        .eq("id", purchaseId).eq("driver_name", name);
+      if (orderId) purchaseQuery = purchaseQuery.eq("order_id", orderId);
+      const { data: purchase, error: purchaseError } = await purchaseQuery.single();
       if (purchaseError || !purchase) throw new Error("Relação de compra não encontrada");
       const path = `receipts/${purchaseId}/${Date.now()}.jpg`;
       const { error: uploadError } = await db.storage.from("opeixeiro-internal-purchase-receipts").upload(path, bytes(image), { contentType: "image/jpeg", upsert: false });
@@ -66,7 +68,7 @@ serve(async (req) => {
       const caption = `🧾 *Compra externa coletada — A caminho do destino*\nMotorista: ${name}\nDestino: ${clean(purchase.opeixeiro_units?.name)}\nStatus: compra coletada; motorista saiu para entrega.\n${author}\nLocal da compra: ${clean(purchase.store_name)}\n\n*Itens comprados:*\n${itemLines}\n\nComprovante: nota fiscal.`;
       const stockEntries = Array.isArray(purchase.purchased_items) ? purchase.purchased_items
         .filter((item: any) => clean(item?.name) && Number(item?.qty) > 0)
-        .map((item: any) => ({ purchase_relation_id: purchaseId, order_id: orderId, destination_unit_id: purchase.supply_origin_unit_id, product_name: clean(item.name), quantity: Number(item.qty), unit: clean(item.unit) || "unidade", driver_name: name })) : [];
+        .map((item: any) => ({ purchase_relation_id: purchaseId, order_id: orderId || null, destination_unit_id: purchase.supply_origin_unit_id, product_name: clean(item.name), quantity: Number(item.qty), unit: clean(item.unit) || "unidade", driver_name: name })) : [];
       if (stockEntries.length) {
         const { error: stockError } = await db.from("opeixeiro_additional_stock_entries").upsert(stockEntries, { onConflict: "purchase_relation_id,product_name,unit" });
         if (stockError) throw stockError;
@@ -78,9 +80,9 @@ serve(async (req) => {
       try {
         await sendInternalReceipt(path, caption);
         await db.from("opeixeiro_internal_purchase_relations").update({ status: "attached_to_route", updated_at: new Date().toISOString() }).eq("id", purchaseId);
-        await db.from("opeixeiro_operational_events").insert({ order_id: orderId, event_type: "internal_purchase_receipt_sent", actor_name: name, client_occurred_at: new Date().toISOString(), metadata: { purchase_id: purchaseId, receipt_path: path, receipt_expires_at: expiresAt, purchased_items: purchase.purchased_items, additional_stock_entries: stockEntries.length } });
+        await db.from("opeixeiro_operational_events").insert({ order_id: orderId || null, event_type: "internal_purchase_receipt_sent", actor_name: name, client_occurred_at: new Date().toISOString(), metadata: { purchase_id: purchaseId, receipt_path: path, receipt_expires_at: expiresAt, purchased_items: purchase.purchased_items, additional_stock_entries: stockEntries.length } });
       } catch (messageError) {
-        await db.from("opeixeiro_operational_events").insert({ order_id: orderId, event_type: "internal_purchase_whatsapp_failed", actor_name: name, client_occurred_at: new Date().toISOString(), metadata: { purchase_id: purchaseId, error: String(messageError), purchased_items: purchase.purchased_items } });
+        await db.from("opeixeiro_operational_events").insert({ order_id: orderId || null, event_type: "internal_purchase_whatsapp_failed", actor_name: name, client_occurred_at: new Date().toISOString(), metadata: { purchase_id: purchaseId, error: String(messageError), purchased_items: purchase.purchased_items } });
         throw messageError;
       }
       return Response.json({ ok: true });

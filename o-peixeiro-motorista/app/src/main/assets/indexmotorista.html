@@ -449,7 +449,7 @@
           <h2>Compra de última hora</h2>
           <p class="small">Registre compra autorizada com verba de responsável ou caixa. A foto da <strong>nota fiscal</strong> é obrigatória; não fotografe comprovante da maquininha.</p>
           <div class="grid" style="margin-top:16px">
-            <div class="field"><label>Pedido vinculado</label><select id="purchaseOrder"></select></div>
+            <div class="field"><label>Pedido vinculado (opcional)</label><select id="purchaseOrder"></select></div>
             <div class="field"><label>Local que solicitou o abastecimento</label><select id="purchaseSupplyOrigin"></select></div>
             <div class="field"><label>Origem da autorização</label><select id="purchaseAuthorization"><option value="responsible">Responsável</option><option value="cash">Dinheiro do caixa</option></select></div>
             <div class="field" id="purchaseResponsibleField"><label>Responsável que autorizou</label><select id="purchaseResponsible"><option>Simone</option><option>Kotian</option></select></div>
@@ -860,7 +860,7 @@
         ]);
         if (orderError || unitError) { ui.purchaseStatus.textContent = 'Não foi possível carregar dados: ' + (orderError || unitError).message; return; }
         ui.purchaseOrder.innerHTML = '<option value="">Sem pedido vinculado</option>' + (orders || []).map(o => `<option value="${o.id}">${o.delivery_date} · ${o.opeixeiro_units?.name || 'Destino'}</option>`).join('');
-        const opts = (units || []).map(u => `<option value="${u.id}" data-code="${u.code || ''}">${u.name}</option>`).join(''); ui.purchaseSupplyOrigin.innerHTML = '<option value="">Selecione</option>' + opts; ui.purchaseCashUnit.innerHTML = '<option value="">Selecione o caixa</option>' + opts;
+        const opts = (units || []).map(u => `<option value="${u.id}">${u.name}</option>`).join(''); ui.purchaseSupplyOrigin.innerHTML = '<option value="">Selecione</option>' + opts; ui.purchaseCashUnit.innerHTML = '<option value="">Selecione o caixa</option>' + opts;
         if (state.currentOrder?.id) ui.purchaseOrder.value = state.currentOrder.id;
         ui.purchaseStatus.textContent = 'Preencha a autorização, os itens e fotografe somente a nota fiscal.';
       }
@@ -873,18 +873,7 @@
         button.disabled = true; button.textContent = 'Preparando câmera...';
         ui.purchaseStatus.textContent = 'Registrando a compra. A câmera abrirá para fotografar a nota fiscal.';
         try {
-          if (!orderId) {
-            const destinationCode = ui.purchaseSupplyOrigin.selectedOptions[0]?.dataset.code;
-            if (!destinationCode) throw new Error('Selecione o destino da compra.');
-            const { data: createdOrderId, error: createOrderError } = await supabaseClient.rpc('opeixeiro_submit_consolidated_order', {
-              p_destination_code: destinationCode,
-              p_requester_name: `Compra emergencial • ${state.driver || 'Motorista'}`,
-              p_items: items.map(item => ({ name: item.name, qty: item.qty, unit: item.unit, origin_unit_id: null }))
-            });
-            if (createOrderError || !createdOrderId) throw createOrderError || new Error('Pedido emergencial não criado.');
-            orderId = createdOrderId;
-            ui.purchaseStatus.textContent = 'Pedido emergencial criado para o destino. Abrindo câmera da nota fiscal...';
-          }
+          if (!orderId) ui.purchaseStatus.textContent = 'Compra emergencial registrada separadamente para o destino. Abrindo câmera da nota fiscal...';
           const payload = { order_id: orderId, driver_name: state.driver, supply_origin_unit_id: originId, authorization_source: source, authorized_by: source === 'responsible' ? ui.purchaseResponsible.value : null, cash_unit_id: source === 'cash' ? ui.purchaseCashUnit.value : null, store_name: store, is_market: ui.purchaseMarket.checked, purchased_items: items, created_before_pickup: !(state.pickupStops || []).some(stop => stop.collected), status: 'draft' };
           const { data, error } = await supabaseClient.from('opeixeiro_internal_purchase_relations').insert(payload).select('id').single();
           if (error || !data?.id) throw error || new Error('Compra não registrada.');

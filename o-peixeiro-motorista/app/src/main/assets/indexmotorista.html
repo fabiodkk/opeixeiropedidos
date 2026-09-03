@@ -860,19 +860,32 @@
         ]);
         if (orderError || unitError) { ui.purchaseStatus.textContent = 'Não foi possível carregar dados: ' + (orderError || unitError).message; return; }
         ui.purchaseOrder.innerHTML = '<option value="">Sem pedido vinculado</option>' + (orders || []).map(o => `<option value="${o.id}">${o.delivery_date} · ${o.opeixeiro_units?.name || 'Destino'}</option>`).join('');
-        const opts = (units || []).map(u => `<option value="${u.id}">${u.name}</option>`).join(''); ui.purchaseSupplyOrigin.innerHTML = '<option value="">Selecione</option>' + opts; ui.purchaseCashUnit.innerHTML = '<option value="">Selecione o caixa</option>' + opts;
+        const opts = (units || []).map(u => `<option value="${u.id}" data-code="${u.code || ''}">${u.name}</option>`).join(''); ui.purchaseSupplyOrigin.innerHTML = '<option value="">Selecione</option>' + opts; ui.purchaseCashUnit.innerHTML = '<option value="">Selecione o caixa</option>' + opts;
         if (state.currentOrder?.id) ui.purchaseOrder.value = state.currentOrder.id;
         ui.purchaseStatus.textContent = 'Preencha a autorização, os itens e fotografe somente a nota fiscal.';
       }
       async function confirmInternalPurchase() {
         const button = document.getElementById('confirmInternalPurchaseBtn');
-        const orderId = ui.purchaseOrder.value || null, originId = ui.purchaseSupplyOrigin.value, source = ui.purchaseAuthorization.value, store = ui.purchaseMarket.checked ? 'Mercado' : ui.purchaseStore.value.trim();
+        let orderId = ui.purchaseOrder.value || null;
+        const originId = ui.purchaseSupplyOrigin.value, source = ui.purchaseAuthorization.value, store = ui.purchaseMarket.checked ? 'Mercado' : ui.purchaseStore.value.trim();
         const items = [...ui.purchaseItems.querySelectorAll('.row')].map(row => ({ name: row.querySelector('[data-purchase-name]').value.trim(), qty: Number(row.querySelector('[data-purchase-qty]').value), unit: row.querySelector('[data-purchase-unit]').value })).filter(i => i.name && i.qty > 0);
-        if (!orderId || !originId || !store || !items.length || (source === 'cash' && !ui.purchaseCashUnit.value)) { ui.purchaseStatus.textContent = 'Vincule um pedido pendente e preencha local solicitante, autorização, compra e pelo menos um item.'; return; }
-        const payload = { order_id: orderId, driver_name: state.driver, supply_origin_unit_id: originId, authorization_source: source, authorized_by: source === 'responsible' ? ui.purchaseResponsible.value : null, cash_unit_id: source === 'cash' ? ui.purchaseCashUnit.value : null, store_name: store, is_market: ui.purchaseMarket.checked, purchased_items: items, created_before_pickup: !(state.pickupStops || []).some(stop => stop.collected), status: 'draft' };
+        if (!originId || !store || !items.length || (source === 'cash' && !ui.purchaseCashUnit.value)) { ui.purchaseStatus.textContent = 'Preencha destino, autorização, local da compra e pelo menos um item.'; return; }
         button.disabled = true; button.textContent = 'Preparando câmera...';
         ui.purchaseStatus.textContent = 'Registrando a compra. A câmera abrirá para fotografar a nota fiscal.';
         try {
+          if (!orderId) {
+            const destinationCode = ui.purchaseSupplyOrigin.selectedOptions[0]?.dataset.code;
+            if (!destinationCode) throw new Error('Selecione o destino da compra.');
+            const { data: createdOrderId, error: createOrderError } = await supabaseClient.rpc('opeixeiro_submit_consolidated_order', {
+              p_destination_code: destinationCode,
+              p_requester_name: `Compra emergencial • ${state.driver || 'Motorista'}`,
+              p_items: items.map(item => ({ name: item.name, qty: item.qty, unit: item.unit, origin_unit_id: null }))
+            });
+            if (createOrderError || !createdOrderId) throw createOrderError || new Error('Pedido emergencial não criado.');
+            orderId = createdOrderId;
+            ui.purchaseStatus.textContent = 'Pedido emergencial criado para o destino. Abrindo câmera da nota fiscal...';
+          }
+          const payload = { order_id: orderId, driver_name: state.driver, supply_origin_unit_id: originId, authorization_source: source, authorized_by: source === 'responsible' ? ui.purchaseResponsible.value : null, cash_unit_id: source === 'cash' ? ui.purchaseCashUnit.value : null, store_name: store, is_market: ui.purchaseMarket.checked, purchased_items: items, created_before_pickup: !(state.pickupStops || []).some(stop => stop.collected), status: 'draft' };
           const { data, error } = await supabaseClient.from('opeixeiro_internal_purchase_relations').insert(payload).select('id').single();
           if (error || !data?.id) throw error || new Error('Compra não registrada.');
           ui.purchaseStatus.textContent = 'Agora fotografe a NOTA FISCAL. Não fotografe comprovante da maquininha.';

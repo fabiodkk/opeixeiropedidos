@@ -180,8 +180,10 @@ serve(async (request) => {
     }
     if (payload.table === "opeixeiro_operational_events" && payload.record.event_type === "admin_manual_delivery_confirmed") {
       const metadata = payload.record.metadata || {};
-      const delivered = confirmedItems(metadata.items);
-      const shortages = Array.isArray(metadata.shortages) ? metadata.shortages as Array<Record<string, unknown>> : [];
+      const rawItems = Array.isArray(metadata.items) ? metadata.items as Array<Record<string, unknown>> : [];
+      const cancelledNames = new Set(rawItems.filter((item) => item.cancel_reorder === true).map((item) => text(item.name).toLocaleLowerCase()));
+      const delivered = confirmedItems(rawItems.filter((item) => !cancelledNames.has(text(item.name).toLocaleLowerCase())));
+      const shortages = (Array.isArray(metadata.shortages) ? metadata.shortages as Array<Record<string, unknown>> : []).filter((item) => !cancelledNames.has(text(item.name).toLocaleLowerCase()));
       const extras = Array.isArray(metadata.extras) ? metadata.extras as Array<Record<string, unknown>> : [];
       const purchase = metadata.purchase as Record<string, unknown> | null;
       const purchased = Array.isArray(purchase?.purchased_items) ? purchase.purchased_items as Array<Record<string, unknown>> : [];
@@ -198,6 +200,9 @@ serve(async (request) => {
       ];
       if (shortages.length) {
         lines.push("", "⚠️ *Não coletados / não entregues — ficam para o próximo agendamento:*", formatItems(shortages.map((item) => ({ name: text(item.name), qty: Number(item.qty) || 0, unit: text(item.unit) || "unidade" }))));
+      }
+      if (cancelledNames.size) {
+        lines.push("", "🚫 *Itens não são mais necessários — não serão reagendados:*", `Solicitado por: ${text(payload.record.actor_name) || "Administração"}`, formatItems(rawItems.filter((item) => cancelledNames.has(text(item.name).toLocaleLowerCase())).map((item) => ({ name: text(item.name), qty: Number(item.qty) || 0, unit: text(item.unit) || "unidade" }))));
       }
       if (extras.length) {
         lines.push("", "➕ *Quantidade a mais informada na entrega:*", formatItems(extras.map((item) => ({ name: text(item.name), qty: Number(item.qty) || 0, unit: text(item.unit) || "unidade" }))));

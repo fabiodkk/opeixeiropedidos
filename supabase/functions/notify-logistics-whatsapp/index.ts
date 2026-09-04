@@ -58,6 +58,7 @@ function formatConfirmedItems(items: Array<{ name: string; qty: number; expected
 }
 
 async function sendGreenMessage(message: string) {
+  try {
   // O WhatsApp aceita mensagens longas, mas dividir por linha evita truncar pedidos grandes.
   const lines = message.split("\n");
   const chunks: string[] = [];
@@ -94,6 +95,11 @@ async function sendGreenMessage(message: string) {
       }),
     });
     if (!response.ok) throw new Error(`Green-API file delivery returned ${response.status}`);
+  }
+  await db.from("opeixeiro_whatsapp_message_logs").insert({ source: "automated", status: "sent", message });
+  } catch (error) {
+    await db.from("opeixeiro_whatsapp_message_logs").insert({ source: "automated", status: "failed", message, reason: String(error) });
+    throw error;
   }
 }
 

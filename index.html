@@ -675,19 +675,8 @@
           isEmergency: Boolean(product.is_emergency)
         }));
 
-        const pending = readPendingOrder();
-        if (pending && Array.isArray(pending.items)) {
-          const map = new Map(pending.items.map(item => [item.name, item]));
-          products.forEach(item => {
-            if (map.has(item.name)) {
-              const saved = map.get(item.name);
-              item.qty = Math.max(0, Number(saved.qty) || 0);
-              item.unit = saved.unit || item.unit;
-              item.originUnitId = saved.origin_unit_id || null;
-            }
-          });
-          pending.items.filter(item => !products.some(product => product.name === item.name)).forEach((item, index) => products.push({ id: 'custom-' + index, name: item.name, qty: Math.max(0, Number(item.qty) || 0), historical: 0, unit: item.unit || 'unidade', originUnitId: item.origin_unit_id || null, isEmergency: Boolean(item.is_emergency) }));
-        }
+        // O pedido sempre começa vazio. Não restauramos quantidades antigas do aparelho.
+        localStorage.removeItem(state.pendingKey);
 
         state.catalog = products;
         renderCatalog();
@@ -861,6 +850,7 @@
         document.getElementById('dashboardUser').textContent = state.profile + ' • ' + state.unit;
         document.getElementById('dashboardMeta').textContent = 'Perfil: ' + state.profile + ' • Unidade: ' + state.unit;
         showStep('step-dashboard');
+        buildCatalog();
         loadCustomProductOrigins();
       }
 
@@ -903,6 +893,8 @@
           return;
         }
         localStorage.removeItem(state.pendingKey);
+        state.catalog.forEach(item => { item.qty = 0; });
+        renderCatalog();
         alert('Pedido enviado. Solicitações da mesma unidade serão somadas nesta entrega.');
         document.querySelector('[data-tab="despacho"]').click();
       }

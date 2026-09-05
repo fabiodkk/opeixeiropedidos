@@ -39,6 +39,18 @@ function formatItems(items: Array<{ name?: string; qty?: number; unit?: string; 
   return items.map((item) => `• ${text(item.name)}: ${item.qty} ${text(item.unit) || "unidade"}${item.origin ? ` — retirar em ${item.origin}` : ""}`).join("\n");
 }
 
+function formatRequestsByRequester(rows: Array<{ requester_name?: string; items?: unknown }>, allItems: Array<{ name?: string; origin?: string }>) {
+  return rows.map((row) => {
+    const items = Array.isArray(row.items) ? row.items as Array<Record<string, unknown>> : [];
+    const ownItems = items.map((item) => {
+      const name = text(item.name);
+      const origin = allItems.find((candidate) => text(candidate.name).toLocaleLowerCase() === name.toLocaleLowerCase())?.origin || "";
+      return { name, qty: Number(item.qty) || 0, unit: text(item.unit) || "unidade", origin };
+    });
+    return `*${text(row.requester_name) || "Solicitante não informado"}*\n${formatItems(ownItems) || "• Nenhum item informado"}`;
+  }).join("\n\n");
+}
+
 function confirmedItems(raw: unknown) {
   if (!Array.isArray(raw)) return [];
   return raw.map((item: Record<string, unknown>) => ({
@@ -152,7 +164,7 @@ serve(async (request) => {
         origin: pickups.map((pickup: { opeixeiro_units?: { name?: string } }) => text(pickup.opeixeiro_units?.name)).filter(Boolean).join(", "),
       });
     }
-    const requesters = (order.opeixeiro_order_contributions || []).map((row: { requester_name?: string }) => text(row.requester_name)).filter(Boolean).join(", ");
+    const requestsByRequester = formatRequestsByRequester(order.opeixeiro_order_contributions || [], itemLines);
     const destination = text(order.opeixeiro_units?.name) || text(order.opeixeiro_units?.code) || "Destino não informado";
     if (payload.table === "opeixeiro_operational_events" && payload.record.event_type === "partial_route_rescheduled") {
       const nextOrderId = text(payload.record.metadata?.next_order_id);
@@ -266,10 +278,9 @@ serve(async (request) => {
       heading,
       `Destino: ${destination}`,
       `Entrega: ${text(order.delivery_date)}`,
-      `Solicitante(s): ${requesters || "Não informado"}`,
+      "*Solicitações separadas por responsável:*",
       "",
-      "*Itens e retirada:*",
-      formatItems(itemLines) || "• Nenhum item informado",
+      requestsByRequester || "• Nenhuma solicitação identificada",
       "",
       `Status: ${statusPtBr(order.status)}.`,
     ].join("\n");

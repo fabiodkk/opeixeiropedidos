@@ -8,6 +8,20 @@ if (cfgFile.exists()) {
     cfgFile.withInputStream { cfg.load(it) }
 }
 
+// O painel embarcado e o cliente nativo precisam usar o mesmo projeto. Durante
+// a transição de chaves, o painel é a fonte local canônica para evitar gerar um
+// APK com uma chave antiga que já não é aceita pelo Supabase.
+def embeddedPanelFile = project.file('src/main/assets/indexmotorista.html')
+def supabaseUrlValue = cfg.getProperty('SUPABASE_URL', '')
+def supabaseAnonKeyValue = cfg.getProperty('SUPABASE_ANON_KEY', '')
+if (embeddedPanelFile.exists()) {
+    def panelHtml = embeddedPanelFile.getText('UTF-8')
+    def urlMatch = panelHtml =~ /const SUPABASE_URL = '([^']+)'/
+    def keyMatch = panelHtml =~ /const SUPABASE_KEY = '([^']+)'/
+    if (urlMatch.find()) supabaseUrlValue = urlMatch.group(1)
+    if (keyMatch.find()) supabaseAnonKeyValue = keyMatch.group(1)
+}
+
 android {
     namespace 'br.com.opeixeiro.motorista'
     compileSdk 36
@@ -30,11 +44,27 @@ android {
         applicationId 'br.com.opeixeiro.motorista'
         minSdk 23
         targetSdk 36
-        versionCode 33
-        versionName '1.4.10'
+        versionCode 37
+        versionName '1.4.14'
 
-        buildConfigField 'String', 'SUPABASE_URL', '"' + (cfg.getProperty('SUPABASE_URL', '')).replace('"', '\\"') + '"'
-        buildConfigField 'String', 'SUPABASE_ANON_KEY', '"' + (cfg.getProperty('SUPABASE_ANON_KEY', '')).replace('"', '\\"') + '"'
+        buildConfigField 'String', 'SUPABASE_URL', '"' + supabaseUrlValue.replace('"', '\\"') + '"'
+        buildConfigField 'String', 'SUPABASE_ANON_KEY', '"' + supabaseAnonKeyValue.replace('"', '\\"') + '"'
+    }
+
+    flavorDimensions 'perfil'
+    productFlavors {
+        motorista {
+            dimension 'perfil'
+            buildConfigField 'boolean', 'CUMIN_APP', 'false'
+            resValue 'string', 'app_name', 'O Peixeiro Motorista'
+        }
+        cumin {
+            dimension 'perfil'
+            applicationIdSuffix '.cumin'
+            versionNameSuffix '-cumim'
+            buildConfigField 'boolean', 'CUMIN_APP', 'true'
+            resValue 'string', 'app_name', 'O Peixeiro Cumim'
+        }
     }
 
     buildTypes {
@@ -70,6 +100,7 @@ dependencies {
     implementation 'com.google.zxing:core:3.5.1'
     implementation 'com.journeyapps:zxing-android-embedded:4.3.0'
     implementation 'com.google.code.gson:gson:2.10.1'
+    implementation 'com.googlecode.libphonenumber:libphonenumber:9.0.38'
 }
 
 

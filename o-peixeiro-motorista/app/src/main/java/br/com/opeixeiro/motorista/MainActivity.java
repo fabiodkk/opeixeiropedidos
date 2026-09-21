@@ -9,15 +9,19 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.text.InputType;
+import android.text.InputFilter;
 import android.util.Log;
 import android.util.Base64;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CheckBox;
+import android.widget.ArrayAdapter;
+import android.widget.AdapterView;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.webkit.JavascriptInterface;
@@ -52,6 +56,8 @@ import com.google.mlkit.vision.face.Face;
 import com.google.mlkit.vision.face.FaceDetection;
 import com.google.mlkit.vision.face.FaceDetector;
 import com.google.mlkit.vision.face.FaceDetectorOptions;
+import com.google.i18n.phonenumbers.PhoneNumberUtil;
+import com.google.i18n.phonenumbers.Phonenumber;
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
 
@@ -66,6 +72,8 @@ import java.io.FileInputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Collections;
+import java.util.Locale;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
@@ -110,12 +118,92 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         prefs = getSharedPreferences("opeixeiro_motorista", MODE_PRIVATE);
         supabaseClient = new SupabaseClient(this);
+        if (BuildConfig.CUMIN_APP) {
+            checkCuminAuthorization();
+            return;
+        }
         scheduleEmergencyChecks();
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU
                 && ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, PERMISSION_NOTIFICATIONS);
         }
         showSelfieConsent();
+    }
+
+    private void checkCuminAuthorization() {
+        String phone = prefs.getString("cumin_phone", "");
+        if (phone.isEmpty()) { showCuminAuthorization(); return; }
+        supabaseClient.checkCuminAccess(phone, deviceAuditId(), new SupabaseClient.Callback() {
+            @Override public void onSuccess(String response) { runOnUiThread(() -> showSelfieConsent()); }
+            @Override public void onError(String error) { runOnUiThread(() -> showCuminAuthorization()); }
+        });
+    }
+
+    private void showCuminAuthorization() {
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL); root.setPadding(dp(20), dp(28), dp(20), dp(24));
+        root.setBackgroundColor(Color.parseColor("#07131B"));
+        root.addView(labelDark("O Peixeiro Cumim", 25f, Color.WHITE));
+        root.addView(labelDark("Acesso beta por 7 dias. Leia os termos, confirme seu telefone no WhatsApp e informe o código recebido.", 14f, Color.parseColor("#BFD2D6")));
+        MaterialButton terms = new MaterialButton(this); terms.setText("Ler termos de uso");
+        terms.setOnClickListener(v -> showTermsOfUse()); root.addView(terms);
+        TextView countryLabel = labelDark("País e código", 14f, Color.parseColor("BFD2D6")); root.addView(countryLabel);
+        Spinner country = new Spinner(this);
+        PhoneNumberUtil phoneUtil = PhoneNumberUtil.getInstance();
+        List<String> countryRegions = new ArrayList<>(phoneUtil.getSupportedRegions());
+        Collections.sort(countryRegions, (left, right) -> new Locale("", left).getDisplayCountry(Locale.getDefault()).compareToIgnoreCase(new Locale("", right).getDisplayCountry(Locale.getDefault())));
+        List<String> countryLabels = new ArrayList<>(); int brazilIndex = 0;
+        for (int i = 0; i < countryRegions.size(); i++) {
+            String region = countryRegions.get(i); String countryName = new Locale("", region).getDisplayCountry(Locale.getDefault());
+            countryLabels.add(countryName + " (+" + phoneUtil.getCountryCodeForRegion(region) + ")");
+            if ("BR".equals(region)) brazilIndex = i;
+        }
+        country.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, countryLabels)); country.setSelection(brazilIndex); root.addView(country);
+        EditText phone = new EditText(this); phone.setHint("Ex.: 11 99999-9999"); phone.setInputType(InputType.TYPE_CLASS_PHONE); phone.setTextColor(Color.WHITE); phone.setHintTextColor(Color.LTGRAY);
+        root.addView(phone, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        country.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                String region = countryRegions.get(position); Phonenumber.PhoneNumber example = phoneUtil.getExampleNumberForType(region, PhoneNumberUtil.PhoneNumberType.MOBILE);
+                phone.setHint(example == null ? "Número local com código de área" : "Ex.: " + phoneUtil.format(example, PhoneNumberUtil.PhoneNumberFormat.NATIONAL));
+            }
+            @Override public void onNothingSelected(AdapterView<?> parent) { }
+        });
+        TextView codeLabel = labelDark("Código de confirmação", 14f, Color.parseColor("BFD2D6")); root.addView(codeLabel);
+        LinearLayout codeRow = new LinearLayout(this); codeRow.setOrientation(LinearLayout.HORIZONTAL); codeRow.setGravity(Gravity.CENTER_VERTICAL);
+        EditText codeLeft = new EditText(this); codeLeft.setHint("123"); codeLeft.setInputType(InputType.TYPE_CLASS_NUMBER); codeLeft.setFilters(new InputFilter[]{new InputFilter.LengthFilter(3)}); codeLeft.setTextColor(Color.WHITE); codeLeft.setHintTextColor(Color.LTGRAY); codeLeft.setLongClickable(false);
+        TextView dash = labelDark(" — ", 22f, Color.WHITE);
+        EditText codeRight = new EditText(this); codeRight.setHint("456"); codeRight.setInputType(InputType.TYPE_CLASS_NUMBER); codeRight.setFilters(new InputFilter[]{new InputFilter.LengthFilter(3)}); codeRight.setTextColor(Color.WHITE); codeRight.setHintTextColor(Color.LTGRAY); codeRight.setLongClickable(false);
+        codeRow.addView(codeLeft, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1)); codeRow.addView(dash); codeRow.addView(codeRight, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1)); root.addView(codeRow);
+        TextView status = labelDark("", 14f, Color.parseColor("#7BD7D4")); root.addView(status);
+        MaterialButton request = new MaterialButton(this); request.setText("Enviar código pelo WhatsApp"); root.addView(request);
+        MaterialButton verify = new MaterialButton(this); verify.setText("Confirmar código e iniciar teste"); root.addView(verify);
+        setContentView(root);
+        request.setOnClickListener(v -> {
+            String value = cuminPhone(countryRegions.get(country.getSelectedItemPosition()), phone.getText().toString());
+            if (value.isEmpty()) { status.setText("Confira o país e informe um número possível com código de área."); return; }
+            status.setText("Enviando código…");
+            supabaseClient.requestCuminCode(value, deviceAuditId(), new SupabaseClient.Callback() {
+                @Override public void onSuccess(String r) { runOnUiThread(() -> status.setText("Código enviado. Verifique seu WhatsApp.")); }
+                @Override public void onError(String e) { runOnUiThread(() -> status.setText("Não foi possível enviar o código.")); }
+            });
+        });
+        verify.setOnClickListener(v -> {
+            String value = cuminPhone(countryRegions.get(country.getSelectedItemPosition()), phone.getText().toString()); String token = codeLeft.getText().toString() + codeRight.getText().toString();
+            if (value.length() < 10 || token.length() != 6) { status.setText("Informe o telefone e os 6 dígitos."); return; }
+            status.setText("Validando acesso…");
+            supabaseClient.verifyCuminCode(value, token, deviceAuditId(), new SupabaseClient.Callback() {
+                @Override public void onSuccess(String r) { runOnUiThread(() -> { prefs.edit().putString("cumin_phone", value).putLong("cumin_beta_until", System.currentTimeMillis() + 7L * 24 * 60 * 60 * 1000).apply(); showSelfieConsent(); }); }
+                @Override public void onError(String e) { runOnUiThread(() -> status.setText("Código inválido ou expirado.")); }
+            });
+        });
+    }
+
+    private String cuminPhone(String region, String rawPhone) {
+        try {
+            PhoneNumberUtil util = PhoneNumberUtil.getInstance(); Phonenumber.PhoneNumber parsed = util.parse(rawPhone == null ? "" : rawPhone, region);
+            if (!util.isPossibleNumber(parsed)) return "";
+            return util.format(parsed, PhoneNumberUtil.PhoneNumberFormat.E164).replace("+", "");
+        } catch (Exception ignored) { return ""; }
     }
 
     /**
@@ -143,7 +231,17 @@ public class MainActivity extends AppCompatActivity {
                 .setMessage("Uma selfie será capturada para liberar esta sessão. Em coletas emergenciais criadas após 09:00, a selfie e a foto obrigatória dos produtos serão enviadas ao grupo de logística para auditoria.")
                 .setCancelable(false)
                 .setNegativeButton("Sair", (dialog, which) -> finishAffinity())
+                .setNeutralButton("Ler termos de uso", (dialog, which) -> showTermsOfUse())
                 .setPositiveButton("Entendi e aceito", (dialog, which) -> showSelfieVerification())
+                .show();
+    }
+
+    private void showTermsOfUse() {
+        new AlertDialog.Builder(this)
+                .setTitle("Termos de uso — O Peixeiro Motorista")
+                .setMessage("Este aplicativo é destinado a colaboradores autorizados. A sessão pode usar a câmera para verificar presença e registrar etapas operacionais autorizadas. Use-o somente para coletas e entregas vinculadas à sua função. Não compartilhe seu acesso, QR ou dados de pedidos. Em caso de dúvida, procure a administração antes de continuar.")
+                .setPositiveButton("Voltar", (dialog, which) -> { if (BuildConfig.CUMIN_APP) showCuminAuthorization(); else showSelfieConsent(); })
+                .setOnCancelListener(dialog -> { if (BuildConfig.CUMIN_APP) showCuminAuthorization(); else showSelfieConsent(); })
                 .show();
     }
 
@@ -547,18 +645,24 @@ public class MainActivity extends AppCompatActivity {
                 String currentVersion = BuildConfig.VERSION_NAME;
                 if (!isVersionNewer(remoteTag, currentVersion)) return;
                 
-                String apkUrl = GITHUB_RELEASE_URL;
+                String apkUrl = "";
                 JSONArray assets = release.optJSONArray("assets");
                 if (assets != null) {
                     for (int i = 0; i < assets.length(); i++) {
                         JSONObject asset = assets.optJSONObject(i);
                         String browserUrl = asset.optString("browser_download_url", "");
-                        if (browserUrl.toLowerCase().endsWith(".apk")) {
+                        String assetName = asset.optString("name", "").toLowerCase(Locale.ROOT);
+                        boolean cuminAsset = assetName.contains("cumin") || assetName.contains("cumim");
+                        boolean expectedFlavor = BuildConfig.CUMIN_APP
+                                ? cuminAsset
+                                : assetName.contains("motorista") && !cuminAsset;
+                        if (browserUrl.toLowerCase(Locale.ROOT).endsWith(".apk") && expectedFlavor) {
                             apkUrl = browserUrl;
                             break;
                         }
                     }
                 }
+                if (apkUrl.isEmpty()) return;
                 
                 final String finalUrl = apkUrl;
                 runOnUiThread(() -> showForceUpdateDialog(finalUrl));
@@ -569,13 +673,11 @@ public class MainActivity extends AppCompatActivity {
     private void showForceUpdateDialog(String updateUrl) {
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Nova versão disponível")
-                .setMessage("Instale a versão mais recente para continuar.")
+                .setMessage("Existe uma atualização disponível. O app fará o download interno para instalar a versão mais recente.")
                 .setCancelable(false)
-                .setPositiveButton("Atualizar", (d, w) -> {
-                    Intent browser = new Intent(Intent.ACTION_VIEW, Uri.parse(updateUrl));
-                    startActivity(browser);
-                    finishAffinity();
-                })
+                .setPositiveButton("Atualizar", (d, w) -> ApkUpdateInstaller.downloadAndInstall(this, updateUrl, (success, message) -> runOnUiThread(() -> {
+                    if (!success) Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+                })))
                 .setNegativeButton("Sair", (d, w) -> finishAffinity())
                 .create();
         dialog.show();
@@ -685,6 +787,11 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         IntentResult result = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
+        if (result != null && result.getContents() != null && result.getContents().trim().startsWith("PT260:")) {
+            webScannerMode = null;
+            validateIntegratedLotTest(result.getContents().trim());
+            return;
+        }
         if (result != null && webScannerMode != null) {
             String mode = webScannerMode;
             webScannerMode = null;
@@ -697,6 +804,14 @@ public class MainActivity extends AppCompatActivity {
         } else if (result != null && result.getContents() != null) {
             processQRCode(result.getContents());
         }
+    }
+
+    private void validateIntegratedLotTest(String token) {
+        message("Validando lote integrado…");
+        supabaseClient.validateIntegratedLotTest(token, motoristaNome, deviceAuditId(), new SupabaseClient.Callback() {
+            @Override public void onSuccess(String result) { runOnUiThread(() -> message("Lote validado. A confirmação foi enviada ao WhatsApp de teste.")); }
+            @Override public void onError(String error) { runOnUiThread(() -> message("Não foi possível validar o lote: " + error)); }
+        });
     }
 
     private void processQRCode(String qrContent) {

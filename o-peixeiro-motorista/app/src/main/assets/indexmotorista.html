@@ -360,10 +360,8 @@
             <div class="row">
               <button id="connectDriverBtn" class="primary">Entrar no sistema</button>
               <button id="refreshDriversBtn" class="secondary">Atualizar usuários</button>
-              <button id="createDriverBtn" class="secondary">Criar perfil de motorista</button>
             </div>
-
-            <div class="field" id="createDriverBox" style="display:none"><label for="newDriverName">Nome do novo motorista</label><div class="row"><input id="newDriverName" placeholder="Digite somente o nome" /><button id="saveDriverBtn" class="secondary">Salvar perfil</button></div></div>
+            <p class="small">Use somente seu perfil autorizado. A senha individual é enviada pelo assistente no WhatsApp privado e não deve ser compartilhada.</p>
 
             <div id="authStatus" class="status"></div>
           </div>
@@ -520,8 +518,6 @@
         existingDrivers: document.getElementById('existingDrivers'),
         driverPasswordField: document.getElementById('driverPasswordField'),
         driverPassword: document.getElementById('driverPassword'),
-        createDriverBox: document.getElementById('createDriverBox'),
-        newDriverName: document.getElementById('newDriverName'),
         ordersList: document.getElementById('ordersList'),
         ordersSubtitle: document.getElementById('ordersSubtitle'),
         ordersStatus: document.getElementById('ordersStatus'),
@@ -626,28 +622,6 @@
         state.driver = resolved;
         saveLocalState();
         await loadOrders();
-      }
-
-      async function createDriverProfile() {
-        if (!window.AndroidScanner || !window.AndroidScanner.isSelfieVerified || !window.AndroidScanner.isSelfieVerified()) {
-          showStatus('authStatus', 'Faça a verificação por selfie antes de criar um perfil.', 'error');
-          return;
-        }
-        if (profileCreatedInVerifiedSession) {
-          showStatus('authStatus', 'Nesta sessão verificada já foi criado um perfil. Você ainda pode entrar com qualquer perfil existente.', 'error');
-          return;
-        }
-        const name = ui.newDriverName.value.trim();
-        if (!name) { showStatus('authStatus', 'Digite o nome do novo motorista.', 'error'); return; }
-        const { data, error } = await supabaseClient.from('opeixeiro_drivers').insert({ display_name: name, active: true }).select('display_name').single();
-        if (error) { showStatus('authStatus', 'Não foi possível criar o perfil: ' + error.message, 'error'); return; }
-        ui.newDriverName.value = '';
-        profileCreatedInVerifiedSession = true;
-        window.AndroidScanner?.bindCreatedProfile?.(data.display_name);
-        ui.createDriverBox.style.display = 'none';
-        await loadDriverList();
-        ui.existingDrivers.value = data.display_name;
-        showStatus('authStatus', 'Perfil de motorista criado. Agora entre no sistema.', 'info');
       }
 
       async function loadOrders() {
@@ -826,8 +800,6 @@
       function attachEvents() {
         document.getElementById('connectDriverBtn').addEventListener('click', connectDriver);
         document.getElementById('refreshDriversBtn').addEventListener('click', loadDriverList);
-        document.getElementById('createDriverBtn').addEventListener('click', () => { ui.createDriverBox.style.display = 'grid'; ui.newDriverName.focus(); });
-        document.getElementById('saveDriverBtn').addEventListener('click', createDriverProfile);
         document.getElementById('backToAuthBtn2').addEventListener('click', () => showScreen('auth'));
         document.getElementById('backToOrdersBtn').addEventListener('click', () => showScreen('orders'));
         document.getElementById('scanDispatchBtn').addEventListener('click', () => openScanner('pickup', true));

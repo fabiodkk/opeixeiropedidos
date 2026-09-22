@@ -5201,7 +5201,7 @@ serve(async (request) => {
         });
       }
     }
-    const senderName = text(
+    const resolvedSenderName = text(
       sender.senderName || sender.chatName || payload.senderName,
     );
     const { data: contact } = await db
@@ -5222,7 +5222,7 @@ serve(async (request) => {
     const personName = text(
       profile?.display_name ||
         contact?.display_name ||
-        senderName ||
+        resolvedSenderName ||
         "pessoa responsável",
     );
     // O link de convite é apenas para a rede. Um número que entre por ele sem

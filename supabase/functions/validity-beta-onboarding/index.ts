@@ -1,9 +1,11 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const db=createClient(Deno.env.get("SUPABASE_URL")||"",Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||"");
-const greenUrl=(Deno.env.get("GREEN_API_URL")||"").replace(/\/$/,"");
-const greenInstance=Deno.env.get("GREEN_API_INSTANCE_ID")||"";
-const greenToken=Deno.env.get("GREEN_API_TOKEN")||"";
+// A conta operacional do robô é a instância fallback. A instância principal
+// pode ser uma conta pessoal desconectada e não deve impedir o cadastro Beta.
+const greenUrl=(Deno.env.get("GREEN_API_FALLBACK_URL")||Deno.env.get("GREEN_API_URL")||"").replace(/\/$/,"");
+const greenInstance=Deno.env.get("GREEN_API_FALLBACK_INSTANCE_ID")||Deno.env.get("GREEN_API_INSTANCE_ID")||"";
+const greenToken=Deno.env.get("GREEN_API_FALLBACK_TOKEN")||Deno.env.get("GREEN_API_TOKEN")||"";
 const organizer="5511989346164";
 const digits=(v:unknown)=>String(v||"").replace(/\D/g,"");
 const clean=(v:unknown,max=120)=>String(v||"").trim().slice(0,max);

@@ -3041,7 +3041,7 @@ serve(async (request) => {
             }).eq("id", betaRequest.id);
             await sendOfficialMessage(
               senderPhone + "@c.us",
-              "✅ Telefone confirmado.\n\nAgora responda apenas *1*, *2*, *3* ou *4* conforme o menu enviado.",
+              "✅ *Telefone confirmado.*\n\nAgora escolha *uma opção* e responda somente com o número:\n\n*1* — trabalho em empresa com plano anual\n*2* — trabalho em empresa com plano mensal\n*3* — represento um estabelecimento e quero contratar\n*4* — quero falar com A.Fabio.C.Silva\n\nExemplo: responda apenas *1*.",
             );
             return Response.json({ stored: true, validity_beta_phone_verified: true });
           }
@@ -3067,7 +3067,7 @@ serve(async (request) => {
           }).eq("id", betaRequest.id);
           await sendOfficialMessage(
             senderPhone + "@c.us",
-            "Certo. Informe agora o *nome do estabelecimento* e a cidade.",
+            "Certo. Envie agora o *nome do estabelecimento e a cidade* em uma única mensagem.\n\nExemplo: *Padaria Central — Mauá/SP*.",
           );
           return Response.json({ stored: true, validity_beta_plan_selected: true });
         }

@@ -3008,7 +3008,9 @@ serve(async (request) => {
     // permanece privado e coleta somente vínculo, estabelecimento, quantidade
     // de equipamentos e equipe autorizada.
     if (isPrivateChat) {
-      const { data: betaRequest, error: betaRequestError } = await db
+      const normalizedBetaMessage = normalized(message);
+      const confirmation = normalizedBetaMessage.match(/^(?:CONFIRMAR\s*)?(\d{3})[- ]?(\d{3})$/);
+      let { data: betaRequest, error: betaRequestError } = await db
         .from("validity_beta_access_requests")
         .select("*")
         .eq("phone_e164", senderPhone)
@@ -3026,10 +3028,40 @@ serve(async (request) => {
           { status: 500 },
         );
       }
+      // O WhatsApp pode substituir o telefone por um identificador @lid.
+      // Primeiro reutilizamos o vínculo salvo; na primeira confirmação,
+      // localizamos o cadastro pelo código temporário válido.
+      if (!betaRequest && rawChatId) {
+        const aliasLookup = await db
+          .from("validity_beta_access_requests")
+          .select("*")
+          .contains("metadata", { whatsapp_chat_id: rawChatId })
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (aliasLookup.error) throw aliasLookup.error;
+        betaRequest = aliasLookup.data;
+      }
+      if (!betaRequest && confirmation) {
+        const codeHash = await sha256Hex(confirmation[1] + confirmation[2]);
+        const candidates = await db
+          .from("validity_beta_access_requests")
+          .select("*")
+          .eq("plan_status", "awaiting_whatsapp_confirmation")
+          .gt("verification_expires_at", new Date().toISOString())
+          .eq("verification_code_hash", codeHash)
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (candidates.error) throw candidates.error;
+        betaRequest = candidates.data;
+      }
       if (betaRequest) {
-        temporaryDriverAccessOutboundPhones.add(senderPhone);
-        const normalizedBetaMessage = normalized(message);
-        const confirmation = normalizedBetaMessage.match(/^(?:CONFIRMAR\s*)?(\d{3})[- ]?(\d{3})$/);
+        const canonicalPhone = text(betaRequest.phone_e164) || senderPhone;
+        const replyChatId = /@(c\.us|lid)$/i.test(rawChatId)
+          ? rawChatId
+          : canonicalPhone + "@c.us";
+        temporaryDriverAccessOutboundPhones.add(canonicalPhone);
         if (confirmation) {
           const code = confirmation[1] + confirmation[2];
           const validUntil = new Date(text(betaRequest.verification_expires_at)).getTime();
@@ -3037,16 +3069,20 @@ serve(async (request) => {
               await sha256Hex(code) === text(betaRequest.verification_code_hash)) {
             await db.from("validity_beta_access_requests").update({
               plan_status: "awaiting_plan_choice",
+              metadata: {
+                ...(betaRequest.metadata && typeof betaRequest.metadata === "object" ? betaRequest.metadata : {}),
+                whatsapp_chat_id: rawChatId,
+              },
               updated_at: new Date().toISOString(),
             }).eq("id", betaRequest.id);
             await sendOfficialMessage(
-              senderPhone + "@c.us",
+              replyChatId,
               "✅ *Telefone confirmado.*\n\nAgora escolha *uma opção* e responda somente com o número:\n\n*1* — trabalho em empresa com plano anual\n*2* — trabalho em empresa com plano mensal\n*3* — represento um estabelecimento e quero contratar\n*4* — quero falar com A.Fabio.C.Silva\n\nExemplo: responda apenas *1*.",
             );
             return Response.json({ stored: true, validity_beta_phone_verified: true });
           }
           await sendOfficialMessage(
-            senderPhone + "@c.us",
+            replyChatId,
             "Código inválido ou expirado. Abra novamente a área Beta do app para receber um novo código.",
           );
           return Response.json({ stored: true, validity_beta_code_rejected: true });
@@ -3066,7 +3102,7 @@ serve(async (request) => {
             updated_at: new Date().toISOString(),
           }).eq("id", betaRequest.id);
           await sendOfficialMessage(
-            senderPhone + "@c.us",
+            replyChatId,
             "Certo. Envie agora o *nome do estabelecimento e a cidade* em uma única mensagem.\n\nExemplo: *Padaria Central — Mauá/SP*.",
           );
           return Response.json({ stored: true, validity_beta_plan_selected: true });
@@ -3083,7 +3119,7 @@ serve(async (request) => {
             updated_at: new Date().toISOString(),
           }).eq("id", betaRequest.id);
           await sendOfficialMessage(
-            senderPhone + "@c.us",
+            replyChatId,
             "Quantas maquininhas Bluetooth serão usadas? O Plano Básico inclui *1 maquininha*.",
           );
           return Response.json({ stored: true, validity_beta_establishment_saved: true });
@@ -3097,7 +3133,7 @@ serve(async (request) => {
             updated_at: new Date().toISOString(),
           }).eq("id", betaRequest.id);
           await sendOfficialMessage(
-            senderPhone + "@c.us",
+              replyChatId,
             "Informe os nomes dos colaboradores e o final dos telefones que usarão o app. O Plano Básico permite até *5 pessoas/dispositivos*.",
           );
           return Response.json({ stored: true, validity_beta_machine_count_saved: true });
@@ -3109,14 +3145,14 @@ serve(async (request) => {
             updated_at: new Date().toISOString(),
           }).eq("id", betaRequest.id);
           await sendOfficialMessage(
-            senderPhone + "@c.us",
+              replyChatId,
             "✅ Cadastro concluído para análise. Nenhuma cobrança foi criada. A.Fabio.C.Silva confirmará o plano e o contrato.",
           );
           if (senderPhone !== organizerPhone) {
             await sendOfficialMessage(
               organizerPhone + "@c.us",
               "✅ Cadastro Validade PT260 concluído.\nNome: " + text(betaRequest.user_name) +
-                "\nTelefone: +" + senderPhone +
+                  "\nTelefone: +" + canonicalPhone +
                 "\nAparelho: " + text(betaRequest.device_model || betaRequest.metadata?.device_model || "não informado") +
                 "\nPlano: " + text(betaRequest.requested_plan) +
                 "\nRevise os dados no painel antes de liberar acesso.",

@@ -2911,9 +2911,10 @@ serve(async (request) => {
     if (text(payload.typeWebhook) !== "incomingMessageReceived")
       return Response.json({ ignored: true });
     const sender = payload.senderData || {};
-    const chatId = text(
+    const rawChatId = text(
       sender.chatId || sender.chat_id || payload.chatId,
-    ).replace(/@g\.us$/, "");
+    );
+    const chatId = rawChatId.replace(/@g\.us$/, "");
     let message = text(
       payload.messageData?.textMessageData?.textMessage ||
         payload.messageData?.extendedTextMessageData?.text ||
@@ -2921,11 +2922,15 @@ serve(async (request) => {
         payload.messageData?.imageMessageData?.caption ||
         "",
     );
-    const senderPhone = phone(
-      sender.sender || sender.senderId || payload.sender,
-    );
+    // Em contas WhatsApp recentes, `sender` pode vir como um identificador
+    // `@lid`, que não é o telefone cadastrado. Em conversa privada, `chatId`
+    // continua contendo o número real e deve ser a fonte canônica.
+    const privateChatById = /@c\.us$/i.test(rawChatId);
+    const senderPhone = privateChatById
+      ? phone(rawChatId)
+      : phone(sender.sender || sender.senderId || payload.sender);
     if (!senderPhone) return Response.json({ ignored: true });
-    const isPrivateChat = phone(chatId) === senderPhone;
+    const isPrivateChat = privateChatById || phone(chatId) === senderPhone;
     const sourceMessageId = text(
       payload.idMessage ||
         payload.messageData?.idMessage ||
@@ -3003,13 +3008,24 @@ serve(async (request) => {
     // permanece privado e coleta somente vínculo, estabelecimento, quantidade
     // de equipamentos e equipe autorizada.
     if (isPrivateChat) {
-      const { data: betaRequest } = await db
+      const { data: betaRequest, error: betaRequestError } = await db
         .from("validity_beta_access_requests")
         .select("*")
         .eq("phone_e164", senderPhone)
         .order("updated_at", { ascending: false })
         .limit(1)
         .maybeSingle();
+      if (betaRequestError) {
+        console.error("Unable to load Validade PT260 beta request", {
+          phoneLast4: senderPhone.slice(-4),
+          code: betaRequestError.code,
+          message: betaRequestError.message,
+        });
+        return Response.json(
+          { error: "beta_request_lookup_failed", detail: betaRequestError.code || "database_error" },
+          { status: 500 },
+        );
+      }
       if (betaRequest) {
         temporaryDriverAccessOutboundPhones.add(senderPhone);
         const normalizedBetaMessage = normalized(message);

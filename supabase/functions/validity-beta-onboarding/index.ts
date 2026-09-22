@@ -39,12 +39,11 @@ serve(async(request)=>{
    updated_at:new Date().toISOString()
   }).eq("id",requestRow.id);
   if(error)throw error;
-  const menu="🤖 *Validade PT260 — confirmação de cadastro*\n\nOlá, "+name+
-   ". Seus dados foram recebidos pelo robô DDD 12.\n\nCódigo de confirmação: *"+code.slice(0,3)+"-"+code.slice(3)+
-   "*\nValidade: 10 minutos.\n\nResponda *CONFIRMAR "+code+"* e depois escolha:\n"+
-   "*1* — funcionário de empresa com plano anual\n*2* — funcionário de empresa com plano mensal\n"+
-   "*3* — representante interessado em contratar\n*4* — falar com A.Fabio.C.Silva\n\n"+
-   "Plano básico: *R$ 119/mês*, 1 maquininha e até 5 pessoas/dispositivos por estabelecimento.";
+  const menu="🤖 *Validade PT260 — confirme seu telefone*\n\nOlá, "+name+
+   ". Recebemos seu cadastro.\n\nSeu código é: *"+code.slice(0,3)+"-"+code.slice(3)+
+   "*\nEle vale por 10 minutos.\n\n*Responda somente assim:*\n*CONFIRMAR "+code+"*\n\n"+
+   "Não envie outra informação junto. Depois da confirmação, o chatbot mostrará o próximo passo.\n\n"+
+   "A cobrança por PIX/QR Code ainda não está disponível.";
   await send(phone,menu);
   if(phone!==organizer)await send(organizer,"📥 *Novo cadastro Validade PT260*\n\nNome: "+name+
    "\nTelefone: +"+phone+"\nAparelho: "+deviceModel+"\nAndroid: "+androidVersion+

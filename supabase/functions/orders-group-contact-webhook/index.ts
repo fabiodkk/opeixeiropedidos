@@ -3,7 +3,8 @@ import { encodeBase64 } from "https://deno.land/std@0.224.0/encoding/base64.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const serviceRoleKey = Deno.env.get("OPEIXEIRO_SERVICE_ROLE_KEY") ||
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const ordersGroupId = (
   Deno.env.get("GREEN_API_ORDERS_GROUP_CHAT_ID") || "120363413485472555"
 ).replace(/@g\.us$/, "");
@@ -1014,8 +1015,8 @@ async function forwardGroupMessageForTrace(
   return true;
 }
 
-async function sendOfficialMessage(chatId: string, message: string) {
-  if (automatedOutboundPaused) {
+async function sendOfficialMessage(chatId: string, message: string, transactional = false) {
+  if (automatedOutboundPaused && !transactional) {
     console.log("WhatsApp outbound paused; event was recorded without sending", {
       chatId,
       length: message.length,
@@ -3010,6 +3011,7 @@ serve(async (request) => {
     if (isPrivateChat) {
       const normalizedBetaMessage = normalized(message);
       const confirmation = normalizedBetaMessage.match(/^(?:CONFIRMAR\s*)?(\d{3})[- ]?(\d{3})$/);
+      const simpleConfirmation = /^(?:sim|confirmo)$/.test(normalizedBetaMessage.trim());
       let { data: betaRequest, error: betaRequestError } = await db
         .from("validity_beta_access_requests")
         .select("*")
@@ -3062,11 +3064,11 @@ serve(async (request) => {
           ? rawChatId
           : canonicalPhone + "@c.us";
         temporaryDriverAccessOutboundPhones.add(canonicalPhone);
-        if (confirmation) {
-          const code = confirmation[1] + confirmation[2];
+        if (confirmation || (simpleConfirmation && text(betaRequest.plan_status) === "awaiting_whatsapp_confirmation")) {
+          const code = confirmation ? confirmation[1] + confirmation[2] : "";
           const validUntil = new Date(text(betaRequest.verification_expires_at)).getTime();
           if (validUntil > Date.now() &&
-              await sha256Hex(code) === text(betaRequest.verification_code_hash)) {
+              (simpleConfirmation || await sha256Hex(code) === text(betaRequest.verification_code_hash))) {
             await db.from("validity_beta_access_requests").update({
               plan_status: "awaiting_plan_choice",
               metadata: {
@@ -3078,12 +3080,14 @@ serve(async (request) => {
             await sendOfficialMessage(
               replyChatId,
               "✅ *Telefone confirmado.*\n\nAgora escolha *uma opção* e responda somente com o número:\n\n*1* — trabalho em empresa com plano anual\n*2* — trabalho em empresa com plano mensal\n*3* — represento um estabelecimento e quero contratar\n*4* — quero falar com A.Fabio.C.Silva\n\nExemplo: responda apenas *1*.",
+              true,
             );
             return Response.json({ stored: true, validity_beta_phone_verified: true });
           }
           await sendOfficialMessage(
             replyChatId,
             "Código inválido ou expirado. Abra novamente a área Beta do app para receber um novo código.",
+            true,
           );
           return Response.json({ stored: true, validity_beta_code_rejected: true });
         }
@@ -3104,6 +3108,7 @@ serve(async (request) => {
           await sendOfficialMessage(
             replyChatId,
             "Certo. Envie agora o *nome do estabelecimento e a cidade* em uma única mensagem.\n\nExemplo: *Padaria Central — Mauá/SP*.",
+            true,
           );
           return Response.json({ stored: true, validity_beta_plan_selected: true });
         }
@@ -3121,6 +3126,7 @@ serve(async (request) => {
           await sendOfficialMessage(
             replyChatId,
             "Quantas maquininhas Bluetooth serão usadas? O Plano Básico inclui *1 maquininha*.",
+            true,
           );
           return Response.json({ stored: true, validity_beta_establishment_saved: true });
         }
@@ -3132,9 +3138,10 @@ serve(async (request) => {
             plan_status: "awaiting_team",
             updated_at: new Date().toISOString(),
           }).eq("id", betaRequest.id);
-          await sendOfficialMessage(
+            await sendOfficialMessage(
               replyChatId,
-            "Informe os nomes dos colaboradores e o final dos telefones que usarão o app. O Plano Básico permite até *5 pessoas/dispositivos*.",
+              "Informe os nomes dos colaboradores e o final dos telefones que usarão o app. O Plano Básico permite até *5 pessoas/dispositivos*.",
+              true,
           );
           return Response.json({ stored: true, validity_beta_machine_count_saved: true });
         }
@@ -3144,9 +3151,10 @@ serve(async (request) => {
             plan_status: "completed_for_review",
             updated_at: new Date().toISOString(),
           }).eq("id", betaRequest.id);
-          await sendOfficialMessage(
+            await sendOfficialMessage(
               replyChatId,
-            "✅ Cadastro concluído para análise. Nenhuma cobrança foi criada. A.Fabio.C.Silva confirmará o plano e o contrato.",
+              "✅ Cadastro concluído para análise. Nenhuma cobrança foi criada. A.Fabio.C.Silva confirmará o plano e o contrato.",
+              true,
           );
           if (senderPhone !== organizerPhone) {
             await sendOfficialMessage(

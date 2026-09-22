@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-const db=createClient(Deno.env.get("SUPABASE_URL")||"",Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||"");
+const db=createClient(Deno.env.get("SUPABASE_URL")||"",Deno.env.get("OPEIXEIRO_SERVICE_ROLE_KEY")||Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||"");
 // A conta operacional do robô é a instância fallback. A instância principal
 // pode ser uma conta pessoal desconectada e não deve impedir o cadastro Beta.
 const greenUrl=(Deno.env.get("GREEN_API_FALLBACK_URL")||Deno.env.get("GREEN_API_URL")||"").replace(/\/$/,"");
@@ -41,7 +41,7 @@ serve(async(request)=>{
   if(error)throw error;
   const menu="🤖 *Validade PT260 — confirme seu telefone*\n\nOlá, "+name+
    ". Recebemos seu cadastro.\n\nSeu código é: *"+code.slice(0,3)+"-"+code.slice(3)+
-   "*\nEle vale por 10 minutos.\n\n*Responda somente assim:*\n*CONFIRMAR "+code+"*\n\n"+
+   "*\nEle vale por 10 minutos.\n\n*Responda somente:* *SIM*\n\n"+
    "Não envie outra informação junto. Depois da confirmação, o chatbot mostrará o próximo passo.\n\n"+
    "A cobrança por PIX/QR Code ainda não está disponível.";
   await send(phone,menu);

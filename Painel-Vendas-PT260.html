@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Validade PT260 — Vendas</title>
+  <style>
+    :root{color-scheme:dark}body{margin:0;background:#07110d;color:#edf7ef;font:15px system-ui}main{max-width:900px;margin:auto;padding:20px}h1{margin:0}.muted{color:#9bb5a7}.card{background:#102019;border:1px solid #285342;border-radius:16px;padding:16px;margin:12px 0}.row{display:grid;grid-template-columns:1fr auto;gap:12px}button{background:#35c878;color:#052511;border:0;border-radius:10px;padding:11px 14px;font-weight:800}button:disabled{opacity:.45}input,select{background:#07110d;color:white;border:1px solid #39624e;border-radius:9px;padding:10px}@media(max-width:600px){.row{grid-template-columns:1fr}}
+  </style>
+</head>
+<body><main>
+  <h1>Validade PT260 — Vendas</h1>
+  <p class="muted">Confirme o recebimento antes de liberar o aparelho.</p>
+  <section class="card">
+    <p><label>Vendedor <input id="seller" value="A.Fabio.C.Silva"></label></p>
+    <p><label>Valor recebido (R$) <input id="amount" value="119,00"></label></p>
+    <p><label>Meio <select id="method"><option>PIX manual</option><option>Dinheiro</option><option>Transferência</option></select></label></p>
+    <label><input id="paid" type="checkbox"> Confirmo que o pagamento foi recebido</label>
+  </section>
+  <div id="list">Carregando…</div>
+</main><script>
+const endpoint='https://suipuquznkksgrkchqrv.supabase.co/functions/v1/validity-sales-admin';
+const token=new URLSearchParams(location.search).get('token')||'',list=document.querySelector('#list');
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+async function call(body){const r=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json','x-admin-token':token},body:JSON.stringify(body)}),d=await r.json();if(!r.ok)throw Error(d.error||'Falha');return d}
+async function load(){try{const d=await call({action:'list'});list.innerHTML=d.rows.map(x=>'<section class="card"><div class="row"><b>'+esc(x.user_name)+' · final '+esc(x.phone_e164.slice(-4))+'</b><b>'+esc(x.plan_status)+'</b></div><p>Aparelho: '+esc(x.device_model||'não informado')+' · Android '+esc(x.android_version||'—')+'</p><p>Plano: '+esc(x.requested_plan||'—')+'<br>Estabelecimento: '+esc(x.establishment_name||'—')+'</p><button '+(x.plan_status==='active'?'disabled':'')+' onclick="approve(\''+x.id+'\')">'+(x.plan_status==='active'?'Venda registrada e acesso liberado':'Registrar venda e liberar acesso')+'</button></section>').join('')||'<p>Nenhuma solicitação.</p>'}catch(e){list.textContent='Acesso negado ou painel indisponível: '+e.message}}
+async function approve(id){if(!document.querySelector('#paid').checked){alert('Confirme primeiro que o pagamento foi recebido.');return}if(!confirm('Registrar a venda e liberar este aparelho?'))return;try{await call({action:'approve',id,seller:document.querySelector('#seller').value,amount:document.querySelector('#amount').value,payment_method:document.querySelector('#method').value,payment_confirmed:true});await load()}catch(e){alert(e.message)}}
+load();
+</script></body></html>
